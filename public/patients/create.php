@@ -26,16 +26,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $token,
     ]);
 
+    flash_message('success', 'Patient "' . trim($_POST['first_name'] . ' ' . $_POST['last_name']) . '" registered successfully.');
     header('Location: index.php');
     exit;
 }
 
 render_header('Add Patient');
 ?>
-<div>
-    <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Add Patient</h1>
-    <p class="text-sm font-bold text-slate-500 mt-1">Create a patient profile and QR/NFC emergency tag reference.</p>
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+    <div>
+        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Add Patient</h1>
+        <p class="text-sm font-bold text-slate-500 mt-1">Create a patient profile and QR/NFC emergency tag reference.</p>
+    </div>
+    <a class="btn btn-ghost text-decoration-none" href="index.php">
+        <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back to Patients
+    </a>
 </div>
+
 <form class="clinic-card p-6 md:p-8" method="post">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div>
@@ -99,8 +106,10 @@ render_header('Add Patient');
         </div>
     </div>
     <div class="mt-6 flex flex-wrap gap-3">
-        <button class="px-5 py-3 bg-primary text-white rounded-2xl text-sm font-bold shadow-lg shadow-primary/20">Save Patient</button>
-        <a class="px-5 py-3 bg-slate-100 text-primary rounded-2xl text-sm font-bold text-decoration-none" href="index.php">Cancel</a>
+        <button class="btn btn-primary">
+            <span class="material-symbols-outlined text-[18px]">person_add</span> Save Patient
+        </button>
+        <a class="btn btn-ghost text-decoration-none" href="index.php">Cancel</a>
     </div>
 </form>
 <?php render_footer(); ?>

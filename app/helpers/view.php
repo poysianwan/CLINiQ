@@ -8,17 +8,99 @@ function e(?string $value): string
     return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Store a flash message in the session for display after redirect.
+ * @param string $type  One of: success, error, info, warning
+ * @param string $message The message text
+ */
+function flash_message(string $type, string $message): void
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    $_SESSION['flash'][] = ['type' => $type, 'message' => $message];
+}
+
+/**
+ * Get a deterministic avatar CSS color class from a name.
+ */
+function avatar_color(string $name): string
+{
+    $colors = ['avatar-blue', 'avatar-emerald', 'avatar-amber', 'avatar-red', 'avatar-indigo', 'avatar-slate'];
+    $hash = crc32($name);
+    return $colors[abs($hash) % count($colors)];
+}
+
+/**
+ * Get initials from a full name (max 2 chars).
+ */
+function initials(string $name): string
+{
+    $parts = preg_split('/\s+/', trim($name));
+    $initials = '';
+    foreach (array_slice($parts, 0, 2) as $part) {
+        $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+    }
+    return $initials;
+}
+
+/**
+ * Get the CSS class for a risk level badge.
+ */
+function risk_badge_class(string $level): string
+{
+    return match (strtolower($level)) {
+        'critical' => 'badge-critical',
+        'high' => 'badge-high',
+        'moderate' => 'badge-moderate',
+        'low' => 'badge-low',
+        default => 'badge-pending',
+    };
+}
+
+/**
+ * Get the CSS class for an alert status badge.
+ */
+function status_badge_class(string $status): string
+{
+    return match (strtolower($status)) {
+        'pending' => 'badge-pending',
+        'not checked' => 'badge-pending',
+        'pre-verified' => 'badge-completed',
+        'verified' => 'badge-completed',
+        'needs correction' => 'badge-high',
+        'in progress' => 'badge-in-progress',
+        'submitted' => 'badge-in-progress',
+        'reviewed' => 'badge-in-progress',
+        'scheduled' => 'badge-in-progress',
+        'resolved' => 'badge-resolved',
+        'cancelled' => 'badge-cancelled',
+        'active' => 'badge-active',
+        'registered' => 'badge-pending',
+        'batch assigned' => 'badge-in-progress',
+        'requirements checked' => 'badge-in-progress',
+        'exam done' => 'badge-completed',
+        'follow-up required' => 'badge-high',
+        'for follow-up' => 'badge-high',
+        'cleared' => 'badge-completed',
+        'completed' => 'badge-completed',
+        default => 'badge-pending',
+    };
+}
+
 function render_header(string $title): void
 {
     $user = current_user();
     $currentPath = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
     $nav = [
-        'Dashboard' => ['url' => app_url('dashboard.php'), 'match' => 'dashboard.php'],
-        'Patient Records' => ['url' => app_url('patients/index.php'), 'match' => '/patients/'],
-        'Visits' => ['url' => app_url('visits/index.php'), 'match' => '/visits/'],
-        'Alerts' => ['url' => app_url('alerts/index.php'), 'match' => '/alerts/'],
-        'Inventory' => ['url' => app_url('inventory/index.php'), 'match' => '/inventory/'],
-        'Reports' => ['url' => app_url('reports/index.php'), 'match' => '/reports/'],
+        'Dashboard' => ['url' => app_url('dashboard.php'), 'match' => 'dashboard.php', 'icon' => 'dashboard'],
+        'Patients' => ['url' => app_url('patients/index.php'), 'match' => '/patients/', 'icon' => 'personal_injury'],
+        'Visits' => ['url' => app_url('visits/index.php'), 'match' => '/visits/', 'icon' => 'clinical_notes'],
+        'Alerts' => ['url' => app_url('alerts/index.php'), 'match' => '/alerts/', 'icon' => 'notification_important'],
+        'Inventory' => ['url' => app_url('inventory/index.php'), 'match' => '/inventory/', 'icon' => 'inventory_2'],
+        'APE' => ['url' => app_url('ape/index.php'), 'match' => '/ape/', 'icon' => 'description'],
+        'Referrals' => ['url' => app_url('referrals/index.php'), 'match' => '/referrals/', 'icon' => 'send'],
+        'Reports' => ['url' => app_url('reports/index.php'), 'match' => '/reports/', 'icon' => 'analytics'],
     ];
     ?>
     <!doctype html>
@@ -36,14 +118,14 @@ function render_header(string $title): void
                 theme: {
                     extend: {
                         colors: {
-                            primary: '#00478d',
-                            'primary-fixed': '#d6e3ff',
-                            'primary-container': '#005eb8',
+                            primary: '#4f9f5e',
+                            'primary-fixed': '#e8f6ec',
+                            'primary-container': '#3f8c50',
                             'on-primary': '#ffffff',
-                            surface: '#f8f9fa',
-                            'on-surface': '#191c1d',
-                            'surface-container-low': '#f3f4f5',
-                            'outline-variant': '#c2c6d4'
+                            surface: '#f4fbf6',
+                            'on-surface': '#17261d',
+                            'surface-container-low': '#edf8f0',
+                            'outline-variant': '#c7dccd'
                         },
                         fontFamily: {
                             headline: ['Manrope', 'sans-serif'],
@@ -53,43 +135,93 @@ function render_header(string $title): void
                 }
             };
         </script>
-        <link href="<?= app_url('assets/css/app.css') ?>" rel="stylesheet">
+        <link href="<?= app_url('assets/css/app.css?v=sidebar-shell') ?>" rel="stylesheet">
     </head>
-    <body class="bg-surface font-body text-on-surface min-h-screen flex flex-col overflow-x-hidden">
-    <header class="w-full px-4 md:px-8 py-4 shrink-0 flex flex-col lg:flex-row justify-between gap-4 lg:items-center bg-white border-b border-outline-variant/20 shadow-sm relative z-20">
-        <a href="<?= app_url('dashboard.php') ?>" class="flex items-center gap-2.5 text-decoration-none">
-            <span class="w-8 h-8 bg-primary text-white rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-                <span class="material-symbols-outlined text-[18px]">clinical_notes</span>
-            </span>
-            <span class="font-headline font-extrabold text-base text-[#1c2a59]">PLP Clinic<span class="text-[#004d9c]">Connect</span></span>
-        </a>
-            <?php if ($user): ?>
-                <nav class="flex flex-wrap items-center gap-4 lg:gap-7">
+    <body class="bg-surface font-body text-on-surface min-h-screen overflow-x-hidden">
+    <?php if ($user): ?>
+        <div class="app-shell">
+            <aside class="app-sidebar">
+                <a href="<?= app_url('dashboard.php') ?>" class="app-brand text-decoration-none">
+                    <span class="app-brand-mark">C</span>
+                    <span class="app-brand-copy">
+                        <span class="app-brand-title">CLINiQ</span>
+                        <span class="app-brand-subtitle">University Health Services</span>
+                    </span>
+                </a>
+                <nav class="app-nav">
                     <?php foreach ($nav as $label => $item): ?>
                         <?php $active = str_contains($currentPath, $item['match']); ?>
-                        <a href="<?= e($item['url']) ?>" class="text-xs font-bold <?= $active ? 'text-primary border-b-2 border-primary' : 'text-slate-500 hover:text-slate-800' ?> transition-colors py-1 text-decoration-none"><?= e($label) ?></a>
+                        <a href="<?= e($item['url']) ?>" class="app-nav-link <?= $active ? 'active' : '' ?> text-decoration-none" title="<?= e($label) ?>">
+                            <span class="material-symbols-outlined"><?= e($item['icon']) ?></span>
+                            <span class="app-nav-label"><?= e($label) ?></span>
+                        </a>
                     <?php endforeach; ?>
-                    <span class="hidden lg:block w-px h-4 bg-slate-200"></span>
-                    <span class="text-xs font-bold text-slate-400"><?= e($user['name']) ?></span>
-                    <a href="<?= app_url('logout.php') ?>" class="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-red-600 transition-colors text-decoration-none">
-                        Logout
-                        <span class="material-symbols-outlined text-[16px]">logout</span>
-                    </a>
                 </nav>
-            <?php endif; ?>
-    </header>
-    <main class="flex-1 w-full p-4 md:p-6 lg:p-10 overflow-y-auto">
-        <div class="max-w-7xl mx-auto w-full space-y-8 pb-16">
+                <div class="app-sidebar-footer">
+                    <span class="app-user-label">Signed in as</span>
+                    <strong><?= e($user['name']) ?></strong>
+                </div>
+            </aside>
+            <div class="app-main">
+                <header class="app-topbar">
+                    <form class="app-search" action="<?= app_url('patients/index.php') ?>" method="get">
+                        <span class="material-symbols-outlined">search</span>
+                        <input name="q" placeholder="Search student name or ID..." autocomplete="off">
+                    </form>
+                    <div class="app-topbar-meta">
+                        <span><?= e(date('l, F j')) ?></span>
+                        <a href="<?= app_url('logout.php') ?>" class="app-logout text-decoration-none">
+                            <span class="material-symbols-outlined">logout</span>
+                            Logout
+                        </a>
+                    </div>
+                </header>
+                <main class="app-content">
+                    <div class="max-w-7xl mx-auto w-full space-y-6 pb-14">
+    <?php else: ?>
+        <main class="auth-main">
+            <div class="auth-wrap">
+    <?php endif; ?>
     <?php
 }
 
 function render_footer(): void
 {
+    $user = current_user();
     ?>
+            </div>
+        </main>
+        <?php if ($user): ?>
+            </div>
         </div>
-    </main>
+        <?php endif; ?>
+    <?php render_flash_toasts(); ?>
     <script src="<?= app_url('assets/js/app.js') ?>"></script>
     </body>
     </html>
     <?php
+}
+
+/**
+ * Render pending flash messages as hidden data elements
+ * that app.js will pick up and display as toasts.
+ */
+function render_flash_toasts(): void
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    $flashes = $_SESSION['flash'] ?? [];
+    if (empty($flashes)) return;
+
+    echo '<div id="flash-toasts" style="display:none;">';
+    foreach ($flashes as $flash) {
+        $type = e($flash['type'] ?? 'info');
+        $message = e($flash['message'] ?? '');
+        echo "<div data-flash=\"{$type}\" data-message=\"{$message}\"></div>";
+    }
+    echo '</div>';
+
+    $_SESSION['flash'] = [];
 }
