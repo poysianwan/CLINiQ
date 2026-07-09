@@ -3,7 +3,7 @@
 require_once __DIR__ . '/../../app/helpers/view.php';
 require_login();
 
-// ── Fetch inventory data ────────────────────────────────────
+// -- Fetch inventory data ------------------------------------
 $items = db()->query('SELECT * FROM inventory_items ORDER BY item_name')->fetchAll();
 $lowStock = array_filter($items, fn($item) => (int) $item['quantity'] <= (int) $item['reorder_level']);
 $expiring = array_filter($items, fn($item) => $item['expiration_date'] && strtotime($item['expiration_date']) <= strtotime('+30 days'));
@@ -11,13 +11,61 @@ $outOfStock = array_filter($items, fn($item) => (int) $item['quantity'] === 0);
 
 $activeTab = $_GET['tab'] ?? 'medicine';
 
+$inventoryColumns = [
+    ['headerName' => 'Item', 'field' => 'itemHtml', 'cellRenderer' => 'html', 'minWidth' => 220],
+    ['headerName' => 'Category', 'field' => 'category', 'minWidth' => 160],
+    ['headerName' => 'Stock Level', 'field' => 'stockHtml', 'cellRenderer' => 'html', 'minWidth' => 230],
+    ['headerName' => 'Reorder At', 'field' => 'reorderLevel', 'width' => 130],
+    ['headerName' => 'Expiration', 'field' => 'expirationHtml', 'cellRenderer' => 'html', 'width' => 150],
+    ['headerName' => 'Status', 'field' => 'statusHtml', 'cellRenderer' => 'html', 'width' => 150],
+    ['headerName' => 'Actions', 'field' => 'actionsHtml', 'cellRenderer' => 'html', 'sortable' => false, 'filter' => false, 'width' => 130],
+];
+$inventoryRows = [];
+foreach ($items as $item) {
+    $isLow = (int)$item['quantity'] <= (int)$item['reorder_level'];
+    $isOut = (int)$item['quantity'] === 0;
+    $isExpiring = $item['expiration_date'] && strtotime($item['expiration_date']) <= strtotime('+30 days');
+    $maxQty = max((int)$item['reorder_level'] * 4, (int)$item['quantity'], 1);
+    $pct = min(100, round(((int)$item['quantity'] / $maxQty) * 100));
+    $barClass = $pct <= 20 ? 'stock-critical' : ($pct <= 50 ? 'stock-warning' : 'stock-healthy');
+    if ($isOut) {
+        $status = '<span class="badge badge-critical">Out of Stock</span>';
+    } elseif ($isLow) {
+        $status = '<span class="badge badge-pending">Low Stock</span>';
+    } elseif ($isExpiring) {
+        $status = '<span class="badge badge-high">Expiring</span>';
+    } else {
+        $status = '<span class="badge badge-completed">In Stock</span>';
+    }
+    $editArgs = implode(', ', [
+        (int)$item['id'],
+        e(json_encode($item['item_name'])),
+        e(json_encode($item['category'])),
+        (int)$item['quantity'],
+        e(json_encode($item['unit'])),
+        (int)$item['reorder_level'],
+        e(json_encode($item['expiration_date'])),
+    ]);
+    $deleteMessage = e(json_encode('Are you sure you want to delete ' . $item['item_name'] . '?'));
+    $inventoryRows[] = [
+        'itemHtml' => '<strong class="text-sm text-slate-800">' . e($item['item_name']) . '</strong>',
+        'category' => $item['category'] ?: '-',
+        'stockHtml' => '<div class="flex items-center gap-2"><span class="stock-bar"><span class="stock-bar-fill ' . e($barClass) . '" style="width: ' . (int)$pct . '%"></span></span><span class="text-sm font-bold ' . ($isLow ? 'text-amber-600' : 'text-slate-600') . '">' . (int)$item['quantity'] . ' ' . e($item['unit']) . '</span></div>',
+        'reorderLevel' => (int)$item['reorder_level'],
+        'expirationHtml' => $item['expiration_date'] ? '<span class="text-sm font-bold ' . ($isExpiring ? 'text-red-600' : 'text-slate-600') . '">' . e(date('M Y', strtotime($item['expiration_date']))) . '</span>' : '<span class="text-sm font-bold text-slate-400">-</span>',
+        'statusHtml' => $status,
+        'actionsHtml' => '<div class="flex justify-end gap-1"><button onclick="editItem(' . $editArgs . ')" class="btn-icon btn-icon-primary" title="Edit"><span class="material-symbols-outlined">edit</span></button><button onclick="confirmAction(\'Delete Item\', ' . $deleteMessage . ', () => { document.getElementById(\'deleteForm-' . (int)$item['id'] . '\').submit(); })" class="btn-icon btn-icon-danger" title="Delete"><span class="material-symbols-outlined">delete</span></button><form id="deleteForm-' . (int)$item['id'] . '" method="post" action="delete.php" style="display:none;"><input type="hidden" name="id" value="' . (int)$item['id'] . '"></form></div>',
+    ];
+}
+
 render_header('Inventory');
 ?>
 
-<!-- ═══ Title ═══ -->
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+<!-- --- Title --- -->
+<div class="dashboard-hero flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-8">
     <div>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Inventory & Tracking</h1>
+        <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2">Supplies</p>
+        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Inventory & Tracking</h1>
         <p class="text-sm font-bold text-slate-500 mt-1">Manage clinic medicines, supplies, and low-stock warnings.</p>
     </div>
     <div class="flex gap-3">
@@ -28,20 +76,27 @@ render_header('Inventory');
     </div>
 </div>
 
-<!-- ═══ Tabs ═══ -->
-<div class="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl w-fit">
-    <button onclick="switchTab('medicine')" id="tab-medicine" class="tab-btn <?= $activeTab === 'medicine' ? 'active' : '' ?> px-6 py-3 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 text-slate-500 hover:bg-slate-50">
-        <span class="material-symbols-outlined text-[20px]">pill</span>
-        Medicine Inventory
-    </button>
-    <button onclick="switchTab('expiring')" id="tab-expiring" class="tab-btn <?= $activeTab === 'expiring' ? 'active' : '' ?> px-6 py-3 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 text-slate-500 hover:bg-slate-50">
-        <span class="material-symbols-outlined text-[20px]">event_busy</span>
-        Expiring Soon
-    </button>
+<!-- --- Tabs & Search --- -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-6">
+    <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl w-fit">
+        <button onclick="switchTab('medicine')" id="tab-medicine" class="tab-btn <?= $activeTab === 'medicine' ? 'active' : '' ?> px-6 py-3 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 text-slate-500 hover:bg-slate-50">
+            <span class="material-symbols-outlined text-[20px]">pill</span>
+            Medicine Inventory
+        </button>
+        <button onclick="switchTab('expiring')" id="tab-expiring" class="tab-btn <?= $activeTab === 'expiring' ? 'active' : '' ?> px-6 py-3 rounded-2xl font-bold text-sm transition-all flex items-center gap-2 text-slate-500 hover:bg-slate-50">
+            <span class="material-symbols-outlined text-[20px]">event_busy</span>
+            Expiring Soon
+        </button>
+    </div>
+    
+    <div class="search-input-wrap w-full md:w-auto shrink-0 bg-white shadow-sm rounded-xl border border-outline-variant/20" style="min-width: 280px; padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span class="search-icon material-symbols-outlined text-slate-400">search</span>
+        <input id="inventoryGridSearch" type="text" placeholder="Search inventory..." class="search-input bg-transparent border-none outline-none w-full text-sm text-slate-700">
+    </div>
 </div>
 
-<!-- ═══ Medicine Tab ═══ -->
-<div id="medicine-content" class="tab-content <?= $activeTab === 'medicine' ? 'active' : '' ?> space-y-6">
+<!-- --- Medicine Tab --- -->
+<div id="medicine-content" class="tab-content <?= $activeTab === 'medicine' ? 'active' : '' ?> space-y-6 mt-6">
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="bg-white p-6 rounded-[2rem] border border-outline-variant/20 shadow-sm flex items-center gap-4">
@@ -75,94 +130,16 @@ render_header('Inventory');
 
     <!-- Medicine Table -->
     <div class="bg-white rounded-[2rem] border border-outline-variant/20 shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead>
-                <tr class="bg-slate-50/50 border-b border-outline-variant/10">
-                    <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Item</th>
-                    <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
-                    <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock Level</th>
-                    <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Reorder At</th>
-                    <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Expiration</th>
-                    <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                    <th class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                </tr>
-                </thead>
-                <tbody class="divide-y divide-outline-variant/10">
-                <?php foreach ($items as $item):
-                    $isLow = (int) $item['quantity'] <= (int) $item['reorder_level'];
-                    $isOut = (int) $item['quantity'] === 0;
-                    $isExpiring = $item['expiration_date'] && strtotime($item['expiration_date']) <= strtotime('+30 days');
-                    $maxQty = max((int)$item['reorder_level'] * 4, (int)$item['quantity'], 1);
-                    $pct = min(100, round(((int)$item['quantity'] / $maxQty) * 100));
-                    $barClass = $pct <= 20 ? 'stock-critical' : ($pct <= 50 ? 'stock-warning' : 'stock-healthy');
-                ?>
-                    <tr class="hover:bg-slate-50/50 transition-colors">
-                        <td class="px-6 py-4">
-                            <strong class="text-sm text-slate-800"><?= e($item['item_name']) ?></strong>
-                        </td>
-                        <td class="px-6 py-4 text-sm font-bold text-slate-600"><?= e($item['category']) ?: '—' ?></td>
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-2">
-                                <span class="stock-bar">
-                                    <span class="stock-bar-fill <?= $barClass ?>" style="width: <?= $pct ?>%"></span>
-                                </span>
-                                <span class="text-sm font-bold <?= $isLow ? 'text-amber-600' : 'text-slate-600' ?>"><?= (int) $item['quantity'] ?> <?= e($item['unit']) ?></span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 text-sm font-bold text-slate-600"><?= (int) $item['reorder_level'] ?></td>
-                        <td class="px-6 py-4">
-                            <?php if ($item['expiration_date']): ?>
-                                <span class="text-sm font-bold <?= $isExpiring ? 'text-red-600' : 'text-slate-600' ?>">
-                                    <?= e(date('M Y', strtotime($item['expiration_date']))) ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="text-sm font-bold text-slate-400">—</span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="px-6 py-4">
-                            <?php if ($isOut): ?>
-                                <span class="badge badge-critical">Out of Stock</span>
-                            <?php elseif ($isLow): ?>
-                                <span class="badge badge-pending">Low Stock</span>
-                            <?php elseif ($isExpiring): ?>
-                                <span class="badge badge-high">Expiring</span>
-                            <?php else: ?>
-                                <span class="badge badge-completed">In Stock</span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="px-4 py-4 text-right">
-                            <button onclick="editItem(<?= (int)$item['id'] ?>, <?= e(json_encode($item['item_name'])) ?>, <?= e(json_encode($item['category'])) ?>, <?= (int)$item['quantity'] ?>, <?= e(json_encode($item['unit'])) ?>, <?= (int)$item['reorder_level'] ?>, <?= e(json_encode($item['expiration_date'])) ?>)" class="btn-icon btn-icon-primary" title="Edit">
-                                <span class="material-symbols-outlined">edit</span>
-                            </button>
-                            <button onclick="confirmAction('Delete Item', 'Are you sure you want to delete <?= e($item['item_name']) ?>?', () => { document.getElementById('deleteForm-<?= (int)$item['id'] ?>').submit(); })" class="btn-icon btn-icon-danger" title="Delete">
-                                <span class="material-symbols-outlined">delete</span>
-                            </button>
-                            <form id="deleteForm-<?= (int)$item['id'] ?>" method="post" action="delete.php" style="display:none;">
-                                <input type="hidden" name="id" value="<?= (int)$item['id'] ?>">
-                            </form>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                <?php if (!$items): ?>
-                    <tr>
-                        <td colspan="7">
-                            <div class="empty-state">
-                                <span class="material-symbols-outlined">inventory_2</span>
-                                <p class="empty-state-title">No inventory items</p>
-                                <p class="empty-state-text">Add medicines and supplies to start tracking.</p>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+        <?php render_ag_grid('inventoryGrid', $inventoryColumns, $inventoryRows, [
+            'searchInput' => 'inventoryGridSearch',
+            'emptyTitle' => 'No inventory items',
+            'emptyText' => 'Add medicines and supplies to start tracking.',
+        ]); ?>
     </div>
 </div>
 
-<!-- ═══ Expiring Tab ═══ -->
-<div id="expiring-content" class="tab-content <?= $activeTab === 'expiring' ? 'active' : '' ?> space-y-6">
+<!-- --- Expiring Tab --- -->
+<div id="expiring-content" class="tab-content <?= $activeTab === 'expiring' ? 'active' : '' ?> space-y-6 mt-6">
     <div class="bg-white rounded-[2rem] border border-outline-variant/20 shadow-sm overflow-hidden">
         <div class="p-6 border-b border-slate-100">
             <h2 class="font-headline text-xl font-extrabold text-[#1c2a59] mb-1">Items Expiring Within 30 Days</h2>
@@ -199,7 +176,7 @@ render_header('Inventory');
     </div>
 </div>
 
-<!-- ═══ Add Medicine Modal ═══ -->
+<!-- --- Add Medicine Modal --- -->
 <div id="addMedicineModal" class="modal-backdrop">
     <div class="modal-content bg-white rounded-[2rem] p-8 w-full max-w-lg shadow-2xl">
         <div class="flex items-center justify-between mb-6">
@@ -245,7 +222,7 @@ render_header('Inventory');
     </div>
 </div>
 
-<!-- ═══ Edit Medicine Modal ═══ -->
+<!-- --- Edit Medicine Modal --- -->
 <div id="editMedicineModal" class="modal-backdrop">
     <div class="modal-content bg-white rounded-[2rem] p-8 w-full max-w-lg shadow-2xl">
         <div class="flex items-center justify-between mb-6">

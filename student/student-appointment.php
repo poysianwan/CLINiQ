@@ -1,328 +1,251 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Appointment Booking - CLINiQ Student Portal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#00478d',
-                        'primary-fixed': '#d6e3ff',
-                        'primary-container': '#005eb8',
-                        'on-primary': '#ffffff',
-                        surface: '#f8f9fa',
-                        'on-surface': '#191c1d',
-                        'surface-container-low': '#f3f4f5',
-                        'outline-variant': '#c2c6d4',
-                        brand: '#00478d',
-                        'brand-dark': '#1c2a59'
-                    },
-                    fontFamily: {
-                        headline: ['Manrope', 'sans-serif'],
-                        body: ['Inter', 'sans-serif']
-                    }
-                }
-            }
-        };
-    </script>
-    <style type="text/tailwindcss">
-        @layer components {
-            .cc-badge {
-                @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider;
-            }
-            .cc-badge-warning {
-                @apply bg-amber-100 text-amber-800;
-            }
-            .cc-badge-success {
-                @apply bg-emerald-100 text-emerald-800;
-            }
-            .cc-badge-danger {
-                @apply bg-red-100 text-red-800;
-            }
-            .cc-button {
-                @apply inline-flex items-center justify-center px-4 py-3 border border-transparent text-sm font-bold rounded-2xl shadow-sm text-white bg-primary hover:bg-primary-container focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors w-full cursor-pointer;
-            }
-            .cc-button-secondary {
-                @apply inline-flex items-center justify-center px-4 py-3 border border-outline-variant/50 text-sm font-bold rounded-2xl shadow-sm text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors w-full cursor-pointer;
-            }
-            .cc-input, .cc-select {
-                @apply w-full min-h-[3rem] border border-slate-200 rounded-2xl bg-slate-50 text-slate-800 font-bold text-sm px-4 focus:outline-none focus:border-primary/30 focus:ring focus:ring-primary/15 transition-all;
-            }
-            .cc-field {
-                @apply space-y-2 mb-5;
-            }
-            .cc-label {
-                @apply block text-xs font-black text-slate-400 uppercase tracking-wider mb-1.5;
-            }
-            .cc-card {
-                @apply bg-white rounded-[2rem] p-6 border border-outline-variant/20 shadow-sm;
-            }
-            .cc-modal {
-                @apply fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300;
-            }
-            .cc-modal.active {
-                @apply opacity-100 pointer-events-auto;
-            }
-            .cc-modal-content {
-                @apply bg-white rounded-[2.5rem] p-6 sm:p-8 w-full max-w-md shadow-2xl transform scale-95 transition-transform duration-300;
-            }
-            .cc-modal.active .cc-modal-content {
-                @apply scale-100;
-            }
-        }
-        
-        body { font-family: 'Inter', sans-serif; }
-        h1, h2, h3, h4, h5, h6, .font-headline { font-family: 'Manrope', sans-serif; }
-        
-        .time-slot {
-            @apply px-4 py-3 border border-slate-200 rounded-2xl text-center text-sm font-bold text-slate-600 bg-white cursor-pointer transition-all hover:border-primary hover:text-primary;
-        }
-        .time-slot.selected {
-            @apply border-primary bg-primary text-white shadow-md;
-        }
-        
-        .date-btn {
-            @apply w-10 h-10 flex items-center justify-center rounded-xl text-sm font-bold cursor-pointer transition-all;
-        }
-        .date-btn.available {
-            @apply bg-primary/10 text-primary hover:bg-primary/20;
-        }
-        .date-btn.selected {
-            @apply bg-primary text-white shadow-md;
-        }
-        .date-btn.disabled {
-            @apply text-slate-300 cursor-not-allowed;
-        }
-    </style>
-</head>
-<body class="bg-surface text-on-surface min-h-screen flex flex-col">
+<?php
+require_once __DIR__ . '/../app/config/database.php';
+require_once __DIR__ . '/../app/services/AppointmentWorkflow.php';
+require_once __DIR__ . '/includes/student-layout.php';
 
-    <!-- Top Navigation Bar -->
-    <header class="w-full px-4 md:px-8 py-4 shrink-0 flex flex-col md:flex-row justify-between gap-4 md:items-center bg-white border-b border-outline-variant/20 shadow-sm relative z-20">
-        <div class="flex items-center justify-between">
-            <a href="student-dashboard.php" class="flex items-center gap-2.5 text-decoration-none">
-                <span class="w-8 h-8 bg-primary text-white rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
-                    <span class="material-symbols-outlined text-[18px]">clinical_notes</span>
-                </span>
-                <span class="font-headline font-extrabold text-base text-[#1c2a59]">PLP Clinic<span class="text-[#004d9c]">Connect</span></span>
-            </a>
-        </div>
-        
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 md:gap-8 w-full md:w-auto">
-            <!-- Nav Links -->
-            <nav class="flex items-center gap-5">
-                <a href="student-dashboard.php" class="text-xs font-black transition-colors py-1 text-decoration-none text-slate-500 hover:text-slate-800">Dashboard</a>
-                <a href="student-ape-status.php" class="text-xs font-black transition-colors py-1 text-decoration-none text-slate-500 hover:text-slate-800">APE Status</a>
-                <a href="student-appointment.php" class="text-xs font-black transition-colors py-1 text-decoration-none text-primary border-b-2 border-primary">Book Appointment</a>
-            </nav>
-            
-            <div class="flex items-center gap-4 justify-between sm:justify-start">
-                <div class="text-right">
-                    <div class="text-xs font-extrabold text-slate-800">Juan dela Cruz</div>
-                    <div class="text-[10px] font-bold text-slate-400">ID: 23-00456</div>
-                </div>
-                <span class="w-px h-5 bg-slate-200"></span>
-                <a href="student-login.php" onclick="localStorage.clear();" class="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-red-600 transition-colors text-decoration-none">
-                    Logout
-                    <span class="material-symbols-outlined text-[16px]">logout</span>
-                </a>
-            </div>
-        </div>
-    </header>
+ensure_appointment_schema();
 
-    <main class="flex-1 p-4 md:p-6 w-full max-w-3xl mx-auto space-y-6">
-        
-        <!-- Student Info Header -->
-        <div class="flex items-center gap-4 mb-2">
-            <div class="w-16 h-16 rounded-full bg-slate-200 border-4 border-white shadow-sm flex items-center justify-center overflow-hidden shrink-0">
-                <span class="material-symbols-outlined text-4xl text-slate-400">person</span>
-            </div>
+$db = db();
+$db->exec("INSERT IGNORE INTO patients (id, student_number, first_name, last_name, emergency_token) VALUES (1, '23-00456', 'Juan', 'dela Cruz', 'dummy-token-123')");
+
+$success = false;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appt_type'], $_POST['appt_date'], $_POST['appt_time'])) {
+    $type = trim($_POST['appt_type']);
+    $dateStr = trim($_POST['appt_date']);
+    $timeStr = trim($_POST['appt_time']);
+    $note = trim($_POST['appt_note'] ?? '');
+    $datetimeStr = date('Y-m-d H:i:s', strtotime("$dateStr $timeStr"));
+    $notes = 'Student requested this appointment through the student portal. Awaiting clinic approval.';
+    if ($note !== '') {
+        $notes .= ' Student note: ' . $note;
+    }
+
+    $stmt = $db->prepare("INSERT INTO appointments (patient_id, appointment_datetime, purpose, status, notes) VALUES (1, ?, ?, 'Pending', ?)");
+    $stmt->execute([$datetimeStr, $type, $notes]);
+    $success = true;
+}
+
+$historyStmt = $db->prepare("
+    SELECT *
+    FROM appointments
+    WHERE patient_id = 1
+    ORDER BY appointment_datetime DESC, created_at DESC
+    LIMIT 5
+");
+$historyStmt->execute();
+$appointments = $historyStmt->fetchAll();
+
+render_student_header('Appointments', 'appointment');
+?>
+
+<section class="student-page-header">
+    <div>
+        <p class="student-eyebrow">Clinic Appointment</p>
+        <h1 class="student-title">Request Appointment</h1>
+        <p class="student-subtitle">Choose your preferred schedule. The clinic will approve the request before it becomes official.</p>
+    </div>
+    <span class="student-badge student-badge-info">
+        <span class="material-symbols-outlined text-[14px]">approval</span>
+        Clinic Approval Required
+    </span>
+</section>
+
+<?php if ($success): ?>
+    <div class="student-note student-note-success mb-4">
+        <span class="material-symbols-outlined">check_circle</span>
+        <div>
+            <strong>Appointment request sent.</strong>
+            Please wait for clinic approval before going to the clinic.
+        </div>
+    </div>
+<?php endif; ?>
+
+<div class="student-grid">
+    <section class="student-card student-span-7">
+        <div class="student-card-header">
             <div>
-                <h2 class="font-headline font-extrabold text-2xl text-brand-dark leading-tight">Juan dela Cruz</h2>
-                <div class="text-sm font-bold text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2">
-                    <span>Student ID: 23-00456</span>
-                    <span class="text-slate-300">•</span>
-                    <span>BSIT - 3rd Year</span>
-                </div>
+                <h2 class="student-card-title">Preferred Schedule</h2>
+                <p class="student-card-copy">This creates a pending request for clinic staff.</p>
             </div>
+            <span class="student-badge student-badge-warning">Pending First</span>
         </div>
+        <div class="student-card-pad">
+            <form id="booking-form" method="POST" action="">
+                <input type="hidden" name="appt_date" id="appt-date-input" value="">
+                <input type="hidden" name="appt_time" id="appt-time-input" value="">
 
-        <h3 class="font-headline text-xl font-extrabold text-brand-dark mt-8 mb-4">Book an Appointment</h3>
-
-        <div class="cc-card">
-            
-            <form id="booking-form" onsubmit="return false;">
-                
-                <!-- Appointment Type -->
-                <div class="cc-field">
-                    <label class="cc-label">Appointment Type</label>
-                    <select id="appt-type" class="cc-select cc-input">
-                        <option value="" disabled selected>Select an appointment type...</option>
+                <div class="student-field">
+                    <label class="student-label" for="appt-type">Appointment Purpose</label>
+                    <select id="appt-type" name="appt_type" class="student-select" required>
+                        <option value="" disabled selected>Select appointment purpose...</option>
                         <option value="General Checkup">General Checkup</option>
-                        <option value="Dental">Dental</option>
+                        <option value="Dental Consultation">Dental Consultation</option>
                         <option value="Medical Consultation">Medical Consultation</option>
+                        <option value="APE Follow-up">APE Follow-up</option>
+                        <option value="Clearance Submission">Clearance Submission</option>
                     </select>
                 </div>
 
-                <!-- Date Picker (Simulated) -->
-                <div class="cc-field mt-6">
-                    <label class="cc-label flex justify-between">
-                        <span>Select Date</span>
-                        <span class="text-primary font-bold lowercase normal-case">July 2026</span>
-                    </label>
-                    
-                    <div class="grid grid-cols-7 gap-1 text-center mb-2">
-                        <div class="text-[10px] font-black text-slate-400 uppercase">Su</div>
-                        <div class="text-[10px] font-black text-slate-400 uppercase">Mo</div>
-                        <div class="text-[10px] font-black text-slate-400 uppercase">Tu</div>
-                        <div class="text-[10px] font-black text-slate-400 uppercase">We</div>
-                        <div class="text-[10px] font-black text-slate-400 uppercase">Th</div>
-                        <div class="text-[10px] font-black text-slate-400 uppercase">Fr</div>
-                        <div class="text-[10px] font-black text-slate-400 uppercase">Sa</div>
+                <div class="student-field">
+                    <label class="student-label">Preferred Date</label>
+                    <div class="student-calendar-grid mb-2 text-center">
+                        <span class="text-[10px] font-black text-slate-400 uppercase">Su</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase">Mo</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase">Tu</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase">We</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase">Th</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase">Fr</span>
+                        <span class="text-[10px] font-black text-slate-400 uppercase">Sa</span>
                     </div>
-                    
-                    <div class="grid grid-cols-7 gap-1 place-items-center" id="calendar-grid">
-                        <div class="date-btn disabled">28</div>
-                        <div class="date-btn disabled">29</div>
-                        <div class="date-btn disabled">30</div>
-                        <div class="date-btn disabled">1</div>
-                        <div class="date-btn disabled">2</div>
-                        <div class="date-btn disabled">3</div>
-                        <div class="date-btn disabled">4</div>
-                        
-                        <div class="date-btn disabled">5</div>
-                        <div class="date-btn disabled">6</div>
-                        <div class="date-btn disabled">7</div>
-                        <div class="date-btn available" onclick="selectDate(this, 'July 8, 2026')">8</div>
-                        <div class="date-btn available" onclick="selectDate(this, 'July 9, 2026')">9</div>
-                        <div class="date-btn disabled">10</div>
-                        <div class="date-btn disabled">11</div>
-                        
-                        <div class="date-btn disabled">12</div>
-                        <div class="date-btn available" onclick="selectDate(this, 'July 13, 2026')">13</div>
-                        <div class="date-btn available" onclick="selectDate(this, 'July 14, 2026')">14</div>
-                        <div class="date-btn disabled">15</div>
-                        <div class="date-btn available" onclick="selectDate(this, 'July 17, 2026')">17</div>
-                        <div class="date-btn available" onclick="selectDate(this, 'July 18, 2026')">18</div>
-                        <div class="date-btn disabled">19</div>
+                    <div class="student-calendar-grid" id="calendar-grid">
+                        <button type="button" class="student-date-btn disabled">5</button>
+                        <button type="button" class="student-date-btn disabled">6</button>
+                        <button type="button" class="student-date-btn disabled">7</button>
+                        <button type="button" class="student-date-btn available" onclick="selectDate(this, 'July 8, 2026')">8</button>
+                        <button type="button" class="student-date-btn available" onclick="selectDate(this, 'July 9, 2026')">9</button>
+                        <button type="button" class="student-date-btn disabled">10</button>
+                        <button type="button" class="student-date-btn disabled">11</button>
+                        <button type="button" class="student-date-btn disabled">12</button>
+                        <button type="button" class="student-date-btn available" onclick="selectDate(this, 'July 13, 2026')">13</button>
+                        <button type="button" class="student-date-btn available" onclick="selectDate(this, 'July 14, 2026')">14</button>
+                        <button type="button" class="student-date-btn available" onclick="selectDate(this, 'July 15, 2026')">15</button>
+                        <button type="button" class="student-date-btn available" onclick="selectDate(this, 'July 16, 2026')">16</button>
+                        <button type="button" class="student-date-btn available" onclick="selectDate(this, 'July 17, 2026')">17</button>
+                        <button type="button" class="student-date-btn disabled">18</button>
                     </div>
                 </div>
 
-                <!-- Time Slots -->
-                <div class="cc-field mt-6">
-                    <label class="cc-label">Available Time Slots</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="time-slots">
-                        <div class="time-slot" onclick="selectTime(this, '8:00 AM')">8:00 AM</div>
-                        <div class="time-slot" onclick="selectTime(this, '9:00 AM')">9:00 AM</div>
-                        <div class="time-slot" onclick="selectTime(this, '10:00 AM')">10:00 AM</div>
-                        <div class="time-slot" onclick="selectTime(this, '1:00 PM')">1:00 PM</div>
-                        <div class="time-slot" onclick="selectTime(this, '2:00 PM')">2:00 PM</div>
+                <div class="student-field">
+                    <label class="student-label">Preferred Time</label>
+                    <div class="student-time-grid" id="time-slots">
+                        <button type="button" class="student-time-slot" onclick="selectTime(this, '8:00 AM')">8:00 AM</button>
+                        <button type="button" class="student-time-slot" onclick="selectTime(this, '9:00 AM')">9:00 AM</button>
+                        <button type="button" class="student-time-slot" onclick="selectTime(this, '10:00 AM')">10:00 AM</button>
+                        <button type="button" class="student-time-slot" onclick="selectTime(this, '1:00 PM')">1:00 PM</button>
+                        <button type="button" class="student-time-slot" onclick="selectTime(this, '2:00 PM')">2:00 PM</button>
+                        <button type="button" class="student-time-slot" onclick="selectTime(this, '3:00 PM')">3:00 PM</button>
                     </div>
                 </div>
 
-                <div class="mt-8">
-                    <button type="button" class="cc-button" onclick="showConfirmation()">
-                        Book Appointment
-                    </button>
+                <div class="student-field">
+                    <label class="student-label" for="appt-note">Optional Note</label>
+                    <textarea id="appt-note" name="appt_note" class="student-textarea" placeholder="Briefly describe your concern or document you need to submit."></textarea>
                 </div>
+
+                <button type="submit" class="student-button w-full">
+                    Send Appointment Request
+                    <span class="material-symbols-outlined">send</span>
+                </button>
             </form>
         </div>
-    </main>
+    </section>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmation-modal" class="cc-modal">
-        <div class="cc-modal-content">
-            <div class="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4">
-                <span class="material-symbols-outlined text-4xl">check_circle</span>
+    <section class="student-card student-span-5">
+        <div class="student-card-header">
+            <div>
+                <h2 class="student-card-title">Request Status</h2>
+                <p class="student-card-copy">How clinic approval works</p>
             </div>
-            <h3 class="font-headline text-2xl font-extrabold text-center text-brand-dark mb-2">Confirm Booking</h3>
-            <p class="text-sm text-center text-slate-500 font-medium mb-6">Please review your appointment details before confirming.</p>
-            
-            <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-4 mb-6">
-                <div class="flex justify-between items-center pb-3 border-b border-slate-200">
-                    <span class="text-xs font-bold text-slate-400 uppercase">Reference</span>
-                    <span class="text-sm font-black text-brand-dark">APT-2026-00123</span>
+            <span class="student-badge student-badge-info">Guide</span>
+        </div>
+        <div class="student-card-pad">
+            <div class="student-progress-list mb-4">
+                <div class="student-progress-step">
+                    <span class="student-progress-step-icon material-symbols-outlined">send</span>
+                    <div>
+                        <strong>Request sent</strong>
+                        <span>Your selected date and time are submitted.</span>
+                    </div>
+                    <span class="student-badge student-badge-success">You</span>
                 </div>
-                <div class="flex justify-between items-center pb-3 border-b border-slate-200">
-                    <span class="text-xs font-bold text-slate-400 uppercase">Type</span>
-                    <span id="summary-type" class="text-sm font-bold text-slate-800">--</span>
+                <div class="student-progress-step">
+                    <span class="student-progress-step-icon material-symbols-outlined">approval</span>
+                    <div>
+                        <strong>Clinic approval</strong>
+                        <span>Clinic staff approves, adjusts, or cancels.</span>
+                    </div>
+                    <span class="student-badge student-badge-warning">Clinic</span>
                 </div>
-                <div class="flex justify-between items-center pb-3 border-b border-slate-200">
-                    <span class="text-xs font-bold text-slate-400 uppercase">Date</span>
-                    <span id="summary-date" class="text-sm font-bold text-slate-800">--</span>
-                </div>
-                <div class="flex justify-between items-center pb-3 border-b border-slate-200">
-                    <span class="text-xs font-bold text-slate-400 uppercase">Time</span>
-                    <span id="summary-time" class="text-sm font-bold text-slate-800">--</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-slate-400 uppercase">Status</span>
-                    <span class="cc-badge cc-badge-warning">Pending</span>
+                <div class="student-progress-step">
+                    <span class="student-progress-step-icon material-symbols-outlined">event_available</span>
+                    <div>
+                        <strong>Scheduled visit</strong>
+                        <span>Go only once your status is scheduled.</span>
+                    </div>
+                    <span class="student-badge student-badge-info">Final</span>
                 </div>
             </div>
 
-            <div class="flex gap-3">
-                <button class="cc-button-secondary" onclick="closeModal()">Cancel</button>
-                <button class="cc-button" onclick="confirmBooking()">Confirm</button>
+            <div class="student-note student-note-warning">
+                <span class="material-symbols-outlined">info</span>
+                <div><strong>Pending is not confirmed.</strong> Wait for the clinic to approve your request before visiting.</div>
             </div>
         </div>
+    </section>
+</div>
+
+<section class="student-card mt-4">
+    <div class="student-card-header">
+        <div>
+            <h2 class="student-card-title">Recent Appointment Requests</h2>
+            <p class="student-card-copy">Your latest requests and clinic decisions</p>
+        </div>
+        <span class="student-badge student-badge-info"><?= count($appointments) ?> Record(s)</span>
     </div>
+    <div class="student-card-pad grid gap-3">
+        <?php if (empty($appointments)): ?>
+            <div class="student-note student-note-warning">
+                <span class="material-symbols-outlined">event_busy</span>
+                <div><strong>No requests yet.</strong> Submit your first appointment request using the form above.</div>
+            </div>
+        <?php else: ?>
+            <?php foreach ($appointments as $appointment): ?>
+                <?php
+                $status = $appointment['status'];
+                $badge = match ($status) {
+                    'Scheduled', 'Completed' => 'student-badge-success',
+                    'Cancelled', 'No Show' => 'student-badge-danger',
+                    'Pending' => 'student-badge-warning',
+                    default => 'student-badge-info',
+                };
+                ?>
+                <div class="student-document-card">
+                    <span class="student-icon-box">
+                        <span class="material-symbols-outlined">event_note</span>
+                    </span>
+                    <div class="student-document-meta">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3><?= student_e($appointment['purpose']) ?></h3>
+                            <span class="student-badge <?= student_e($badge) ?>"><?= student_e($status) ?></span>
+                        </div>
+                        <p><?= student_e(date('F j, Y \a\t g:i A', strtotime($appointment['appointment_datetime']))) ?></p>
+                    </div>
+                    <span class="student-badge <?= student_e($badge) ?>"><?= student_e($status === 'Pending' ? 'Awaiting Clinic' : $status) ?></span>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+</section>
 
-    <script>
-        // Check if logged in
-        if (localStorage.getItem('student_logged_in') !== 'true') {
-            window.location.href = "student-login.php";
+<script>
+    function selectDate(button, value) {
+        document.querySelectorAll('.student-date-btn').forEach((item) => item.classList.remove('selected'));
+        button.classList.add('selected');
+        document.getElementById('appt-date-input').value = value;
+    }
+
+    function selectTime(button, value) {
+        document.querySelectorAll('.student-time-slot').forEach((item) => item.classList.remove('selected'));
+        button.classList.add('selected');
+        document.getElementById('appt-time-input').value = value;
+    }
+
+    document.getElementById('booking-form').addEventListener('submit', function (event) {
+        if (!document.getElementById('appt-date-input').value || !document.getElementById('appt-time-input').value) {
+            event.preventDefault();
+            alert('Please select a preferred date and time.');
         }
+    });
+</script>
 
-        let selectedDateStr = null;
-        let selectedTimeStr = null;
-
-        function selectDate(el, dateStr) {
-            document.querySelectorAll('.date-btn.available').forEach(btn => btn.classList.remove('selected'));
-            el.classList.add('selected');
-            selectedDateStr = dateStr;
-        }
-
-        function selectTime(el, timeStr) {
-            document.querySelectorAll('.time-slot').forEach(btn => btn.classList.remove('selected'));
-            el.classList.add('selected');
-            selectedTimeStr = timeStr;
-        }
-
-        function showConfirmation() {
-            const type = document.getElementById('appt-type').value;
-            
-            if (!type || !selectedDateStr || !selectedTimeStr) {
-                alert("Please select appointment type, date, and time slot.");
-                return;
-            }
-
-            document.getElementById('summary-type').textContent = type;
-            document.getElementById('summary-date').textContent = selectedDateStr;
-            document.getElementById('summary-time').textContent = selectedTimeStr;
-
-            document.getElementById('confirmation-modal').classList.add('active');
-        }
-
-        function closeModal() {
-            document.getElementById('confirmation-modal').classList.remove('active');
-        }
-
-        function confirmBooking() {
-            alert("Booking confirmed successfully! Redirecting...");
-            closeModal();
-            // Reset form
-            document.getElementById('booking-form').reset();
-            document.querySelectorAll('.date-btn.selected, .time-slot.selected').forEach(el => el.classList.remove('selected'));
-            selectedDateStr = null;
-            selectedTimeStr = null;
-        }
-    </script>
-</body>
-</html>
+<?php render_student_footer(); ?>

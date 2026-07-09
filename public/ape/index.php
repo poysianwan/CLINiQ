@@ -52,57 +52,98 @@ $metrics = [
 ];
 $clearanceRate = $metrics['total'] > 0 ? round(($metrics['completed'] / $metrics['total']) * 100) : 0;
 
+// Top bar stats
+$activeStudents = $metrics['total'] - $metrics['completed'];
+$appointmentsStmt = db()->query("SELECT COUNT(*) AS total FROM appointments WHERE DATE(appointment_datetime) = CURDATE()");
+$appointmentsToday = (int)($appointmentsStmt->fetch()['total'] ?? 0);
+
+$overdueRecords = [];
+foreach ($allRecords as $rec) {
+    $priority = ape_priority_badge($rec);
+    if ($priority['label'] === 'Overdue' || $priority['label'] === 'Urgent') {
+        $overdueRecords[] = $rec;
+    }
+}
+
+$apeQueueColumns = [
+    ['headerName' => 'Priority', 'field' => 'priorityHtml', 'cellRenderer' => 'html', 'width' => 140],
+    ['headerName' => 'Student', 'field' => 'studentHtml', 'cellRenderer' => 'html', 'minWidth' => 250],
+    ['headerName' => 'Program', 'field' => 'programHtml', 'cellRenderer' => 'html', 'minWidth' => 220],
+    ['headerName' => 'Waiting', 'field' => 'waiting', 'width' => 140],
+    ['headerName' => 'Next Action', 'field' => 'nextActionHtml', 'cellRenderer' => 'html', 'minWidth' => 260],
+    ['headerName' => 'Action', 'field' => 'actionHtml', 'cellRenderer' => 'html', 'sortable' => false, 'filter' => false, 'width' => 210],
+];
+
 render_header('APE Work Queues');
 ?>
 
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div class="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 mb-6">
     <div>
-        <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2">Clinic APE Center</p>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">APE Work Queues</h1>
-        <p class="text-sm font-bold text-slate-500 mt-1">Review hard-copy medical documents, archive checked files online, and track follow-up until cleared.</p>
+        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Good morning, Nurse Cruz</h1>
+        <p class="text-sm font-bold text-slate-500 mt-1">Here's what needs your attention today. Start at the top.</p>
     </div>
-    <div class="flex flex-wrap gap-3">
-        <a class="btn btn-ghost text-decoration-none" href="<?= app_url('dashboard.php') ?>">
-            <span class="material-symbols-outlined text-[18px]">dashboard</span>
-            Dashboard
-        </a>
-        <a class="btn btn-primary text-decoration-none" href="create.php">
-            <span class="material-symbols-outlined text-[20px]">add_notes</span>
-            Add APE Record
-        </a>
+    
+    <div class="flex items-center gap-3">
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 min-w-[140px]">
+            <span class="material-symbols-outlined text-slate-400 text-[28px]">group</span>
+            <div>
+                <p class="font-headline text-2xl font-extrabold text-[#17261d] leading-none mb-1"><?= (int)$activeStudents ?></p>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Active students</p>
+            </div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 min-w-[140px]">
+            <span class="material-symbols-outlined text-slate-400 text-[28px]">notification_important</span>
+            <div>
+                <p class="font-headline text-2xl font-extrabold text-[#17261d] leading-none mb-1"><?= count($overdueRecords) ?></p>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Needs attention</p>
+            </div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4 min-w-[140px]">
+            <span class="material-symbols-outlined text-slate-400 text-[28px]">show_chart</span>
+            <div>
+                <p class="font-headline text-2xl font-extrabold text-[#17261d] leading-none mb-1"><?= (int)$metrics['completed'] ?></p>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Completed</p>
+            </div>
+        </div>
     </div>
 </div>
 
-<section class="clinic-card p-6 md:p-8">
-    <div class="flex flex-col xl:flex-row justify-between gap-6">
-        <div class="max-w-3xl">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-fixed border border-outline-variant text-primary text-[10px] font-black uppercase tracking-widest mb-4">
-                <span class="material-symbols-outlined text-[14px]">task_alt</span>
-                Guided APE Flow
-            </div>
-            <h2 class="font-headline text-2xl md:text-3xl font-extrabold text-[#17261d] leading-tight">Move students from medical document review to completed APE records.</h2>
-            <p class="text-sm font-bold text-slate-500 mt-3 mb-0">The clinic records findings during hard-copy review, waits for the checked documents to be submitted online, then clears students or manages follow-up requirements.</p>
-        </div>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 xl:min-w-[520px]">
-            <div class="rounded-2xl bg-primary-fixed border border-outline-variant p-4">
-                <p class="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Needs Action</p>
-                <p class="font-headline text-3xl font-extrabold text-[#17261d] mb-0"><?= (int)$metrics['clinic_action'] ?></p>
-            </div>
-            <div class="rounded-2xl bg-white border border-outline-variant p-4">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Digitized</p>
-                <p class="font-headline text-3xl font-extrabold text-[#17261d] mb-0"><?= (int)$metrics['digitized'] ?></p>
-            </div>
-            <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4">
-                <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-1">Follow-up</p>
-                <p class="font-headline text-3xl font-extrabold text-amber-900 mb-0"><?= (int)$metrics['follow_up'] ?></p>
-            </div>
-            <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-4">
-                <p class="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-1">Cleared</p>
-                <p class="font-headline text-3xl font-extrabold text-emerald-800 mb-0"><?= (int)$clearanceRate ?>%</p>
-            </div>
-        </div>
+<?php if (count($overdueRecords) > 0): ?>
+<div class="bg-red-50 border border-red-200 rounded-2xl p-1 mb-8">
+    <div class="px-5 py-4 text-red-700 flex items-center gap-2 border-b border-red-100/50">
+        <span class="material-symbols-outlined text-[18px]">error</span>
+        <h2 class="font-headline font-extrabold text-sm m-0"><?= count($overdueRecords) ?> student(s) need immediate attention</h2>
     </div>
-</section>
+    <div class="divide-y divide-red-100/50">
+        <?php foreach (array_slice($overdueRecords, 0, 5) as $rec): 
+            $fullName = trim($rec['first_name'] . ' ' . $rec['last_name']);
+            $next = ape_next_action($rec);
+            $days = ape_waiting_days($rec);
+            $priority = ape_priority_badge($rec);
+            $warningClass = $priority['label'] === 'Overdue' ? 'text-red-600' : 'text-amber-600';
+            $badgeIcon = 'error';
+        ?>
+            <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-red-100/30 transition-colors">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-base mb-1"><?= e($fullName) ?></h3>
+                    <p class="text-xs font-bold text-slate-500 m-0">
+                        <?= e($rec['student_number']) ?> &bull; <?= e($rec['course_section'] ?: 'No course') ?> &bull; <?= e($next['label']) ?> &mdash; <?= strtolower(e($priority['label'])) ?>
+                    </p>
+                </div>
+                <div class="flex items-center gap-6 shrink-0">
+                    <span class="text-xs font-bold <?= $warningClass ?> flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]"><?= $badgeIcon ?></span>
+                        <?= e($priority['label']) ?> - <?= $days ?>d
+                    </span>
+                    <a href="view.php?id=<?= (int)$rec['id'] ?>" class="text-xs font-bold text-red-700 hover:text-red-800 text-decoration-none flex items-center gap-1">
+                        Resolve <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <section class="clinic-card p-6">
     <div class="flex flex-col lg:flex-row justify-between gap-4 lg:items-center mb-5">
@@ -110,13 +151,6 @@ render_header('APE Work Queues');
             <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-1">Work Queue Map</h2>
             <p class="text-xs font-bold text-slate-500 mb-0">Click a queue to focus the page. Each student shows one next clinic action.</p>
         </div>
-        <form class="search-input-wrap max-w-sm" method="get">
-            <?php if ($activeQueue !== 'all'): ?>
-                <input type="hidden" name="queue" value="<?= e($activeQueue) ?>">
-            <?php endif; ?>
-            <span class="search-icon material-symbols-outlined">search</span>
-            <input class="search-input" name="q" value="<?= e($search) ?>" placeholder="Search name, ID, course, document...">
-        </form>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <a href="?<?= $search !== '' ? 'q=' . urlencode($search) : '' ?>" class="rounded-2xl border <?= $activeQueue === 'all' ? 'border-primary bg-primary-fixed' : 'border-outline-variant bg-white' ?> p-4 text-decoration-none transition-colors">
@@ -161,73 +195,28 @@ render_header('APE Work Queues');
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left">
-                    <thead>
-                    <tr class="bg-slate-50/50 border-b border-outline-variant/40">
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Priority</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Program</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Waiting</th>
-                        <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Next Action</th>
-                        <th class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Action</th>
-                    </tr>
-                    </thead>
-                    <tbody class="divide-y divide-outline-variant/40">
-                    <?php foreach ($shownRecords as $rec):
-                        $fullName = trim($rec['first_name'] . ' ' . $rec['last_name']);
-                        $next = ape_next_action($rec);
-                        $priority = ape_priority_badge($rec);
-                    ?>
-                        <tr class="hover:bg-primary-fixed/40 transition-colors">
-                            <td class="px-6 py-4">
-                                <span class="badge <?= e($priority['class']) ?>"><?= e($priority['label']) ?></span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="avatar <?= avatar_color($fullName) ?>"><?= initials($fullName) ?></div>
-                                    <div>
-                                        <strong class="text-sm text-slate-800"><?= e($fullName) ?></strong>
-                                        <div class="text-xs font-bold text-slate-400"><?= e($rec['student_number']) ?></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <p class="text-sm font-bold text-slate-700 mb-1"><?= e($rec['course_section'] ?: 'No course set') ?></p>
-                                <p class="text-xs font-bold text-slate-400 mb-0"><?= e($rec['document_type'] ?: 'APE documents') ?></p>
-                            </td>
-                            <td class="px-6 py-4 text-sm font-bold text-slate-600"><?= e(ape_waiting_label($rec)) ?></td>
-                            <td class="px-6 py-4">
-                                <div class="flex items-center gap-2">
-                                    <span class="material-symbols-outlined text-primary text-[18px]"><?= e($next['icon']) ?></span>
-                                    <div>
-                                        <strong class="block text-sm text-slate-800"><?= e($next['label']) ?></strong>
-                                        <span class="block text-xs font-bold text-slate-400"><?= e(ape_missing_item($rec)) ?></span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-right">
-                                <a href="view.php?id=<?= (int)$rec['id'] ?>" class="btn <?= $queueKey === 'completed' ? 'btn-ghost' : 'btn-primary' ?> btn-sm text-decoration-none">
-                                    <span class="material-symbols-outlined text-[14px]"><?= e($next['icon']) ?></span>
-                                    <?= e($next['label']) ?>
-                                </a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                    <?php if (!$shownRecords): ?>
-                        <tr>
-                            <td colspan="6">
-                                <div class="empty-state">
-                                    <span class="material-symbols-outlined"><?= e($queue['icon']) ?></span>
-                                    <p class="empty-state-title">No students here</p>
-                                    <p class="empty-state-text">This queue is clear for now.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+            <?php
+            $apeRows = [];
+            foreach ($shownRecords as $rec) {
+                $fullName = trim($rec['first_name'] . ' ' . $rec['last_name']);
+                $next = ape_next_action($rec);
+                $priority = ape_priority_badge($rec);
+                $apeRows[] = [
+                    'priorityHtml' => '<span class="badge ' . e($priority['class']) . '">' . e($priority['label']) . '</span>',
+                    'studentHtml' => '<div class="flex items-center gap-3"><div class="avatar ' . e(avatar_color($fullName)) . '">' . e(initials($fullName)) . '</div><div><strong class="text-sm text-slate-800">' . e($fullName) . '</strong><div class="text-xs font-bold text-slate-400">' . e($rec['student_number']) . '</div></div></div>',
+                    'programHtml' => '<p class="text-sm font-bold text-slate-700 mb-1">' . e($rec['course_section'] ?: 'No course set') . '</p><p class="text-xs font-bold text-slate-400 mb-0">' . e($rec['document_type'] ?: 'APE documents') . '</p>',
+                    'waiting' => ape_waiting_label($rec),
+                    'nextActionHtml' => '<div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[18px]">' . e($next['icon']) . '</span><div><strong class="block text-sm text-slate-800">' . e($next['label']) . '</strong><span class="block text-xs font-bold text-slate-400">' . e(ape_missing_item($rec)) . '</span></div></div>',
+                    'actionHtml' => '<a href="view.php?id=' . (int)$rec['id'] . '" class="btn ' . ($queueKey === 'completed' ? 'btn-ghost' : 'btn-primary') . ' btn-sm text-decoration-none"><span class="material-symbols-outlined text-[14px]">' . e($next['icon']) . '</span>' . e($next['label']) . '</a>',
+                ];
+            }
+            render_ag_grid('apeGrid' . preg_replace('/[^A-Za-z0-9_-]/', '', $queueKey), $apeQueueColumns, $apeRows, [
+                'pageSize' => $activeQueue === 'all' ? 10 : 25,
+                'height' => 'compact',
+                'emptyTitle' => 'No students here',
+                'emptyText' => 'This queue is clear for now.',
+            ]);
+            ?>
             <?php if ($activeQueue === 'all' && count($records) > $limit): ?>
                 <div class="px-6 py-4 border-t border-outline-variant bg-slate-50/40 text-right">
                     <a class="btn btn-sm btn-ghost text-decoration-none" href="?queue=<?= urlencode($queueKey) ?><?= $search !== '' ? '&q=' . urlencode($search) : '' ?>">View all <?= count($records) ?></a>

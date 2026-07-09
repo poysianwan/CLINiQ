@@ -279,156 +279,160 @@ render_header('APE Record - ' . $fullName);
     </div>
 </section>
 
-<div class="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-6">
-    <section class="clinic-card p-6">
-        <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-5">Student Information</h2>
-        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-                <dt class="clinic-label">Student</dt>
-                <dd class="text-sm font-bold text-slate-700"><?= e($fullName) ?></dd>
-            </div>
-            <div>
-                <dt class="clinic-label">Student Number</dt>
-                <dd class="text-sm font-bold text-slate-700"><?= e($record['student_number']) ?></dd>
-            </div>
-            <div>
-                <dt class="clinic-label">Course / Section</dt>
-                <dd class="text-sm font-bold text-slate-700"><?= e($record['course_section'] ?? 'Not set') ?></dd>
-            </div>
-            <div>
-                <dt class="clinic-label">Purpose</dt>
-                <dd class="text-sm font-bold text-slate-700">Freshman APE medical record</dd>
-            </div>
-        </dl>
-    </section>
 
-    <section class="clinic-card p-6">
-        <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-5">Hard-Copy Document Review</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-                <p class="clinic-label">Status</p>
-                <span class="badge <?= ape_status_badge_class($record['requirement_status']) ?>"><?= e($record['requirement_status']) ?></span>
+<div class="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6 items-start">
+    <!-- Main Content: Chronological Timeline -->
+    <div class="space-y-6">
+        <!-- Phase 1: Hard-Copy Document Review (Always Visible) -->
+        <section class="clinic-card p-6">
+            <div class="flex items-center gap-3 mb-5 border-b border-slate-100 pb-4">
+                <span class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-black text-xs">1</span>
+                <h2 class="font-headline text-xl font-extrabold text-[#17261d] m-0">Phase 1: Hard-Copy Review</h2>
             </div>
-            <div>
-                <p class="clinic-label">Finding / Follow-up Requirement</p>
-                <p class="text-sm font-bold text-slate-700 mb-0"><?= e(ape_missing_item($record)) ?></p>
-            </div>
-        </div>
-    </section>
-
-    <section class="clinic-card p-6">
-        <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-5">Online Document Keeping</h2>
-        <div class="space-y-3">
-            <div class="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                    <strong class="text-sm text-slate-800"><?= e($record['document_type']) ?></strong>
-                    <p class="text-xs font-bold text-slate-400 mb-0"><?= $record['document_path'] ? 'Submitted online for clinic archive' : 'Waiting for online submission' ?></p>
+                    <p class="clinic-label">Status</p>
+                    <span class="badge <?= ape_status_badge_class($record['requirement_status']) ?>"><?= e($record['requirement_status']) ?></span>
                 </div>
-                <?php if ($record['document_path']): ?>
-                    <a href="<?= app_url($record['document_path']) ?>" target="_blank" class="btn btn-sm btn-outline text-decoration-none">View</a>
-                <?php endif; ?>
-            </div>
-            <div class="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                 <div>
-                    <strong class="text-sm text-slate-800">Follow-up Clearance</strong>
-                    <p class="text-xs font-bold text-slate-400 mb-0"><?= $record['clearance_document_path'] ? 'Submitted for approval' : 'No clearance file submitted' ?></p>
+                    <p class="clinic-label">Finding / Missing Items</p>
+                    <p class="text-sm font-bold text-slate-700 mb-0"><?= e(ape_missing_item($record)) ?></p>
                 </div>
-                <?php if ($record['clearance_document_path']): ?>
-                    <a href="<?= app_url($record['clearance_document_path']) ?>" target="_blank" class="btn btn-sm btn-outline text-decoration-none">View</a>
-                <?php endif; ?>
+                <div class="sm:col-span-2">
+                    <p class="clinic-label">Clinic Notes (Physical Check)</p>
+                    <p class="text-sm font-bold text-slate-700 mb-0 whitespace-pre-wrap"><?= e($record['clinical_remarks'] ?: 'No physical check notes recorded.') ?></p>
+                </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <section class="clinic-card p-6">
-        <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-5">Clinic Findings</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-                <p class="clinic-label">Finding Status</p>
-                <span class="badge <?= ape_status_badge_class($record['result_status']) ?>"><?= e($record['result_status']) ?></span>
+        <!-- Phase 2: Online Document Keeping -->
+        <?php if ($record['requirement_status'] !== 'Not Checked'): ?>
+        <section class="clinic-card p-6">
+            <div class="flex items-center gap-3 mb-5 border-b border-slate-100 pb-4">
+                <span class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center font-black text-xs">2</span>
+                <h2 class="font-headline text-xl font-extrabold text-[#17261d] m-0">Phase 2: Digital Archive</h2>
             </div>
-            <div>
-                <p class="clinic-label">Fitness Note</p>
-                <p class="text-sm font-bold text-slate-700 mb-0"><?= (int)$record['follow_up_required'] ? 'For follow-up before completion' : 'No follow-up required' ?></p>
-            </div>
-            <div class="sm:col-span-2">
-                <p class="clinic-label">Review Notes</p>
-                <p class="text-sm font-bold text-slate-700 mb-0 whitespace-pre-wrap"><?= e($record['result_notes'] ?: $record['clinical_remarks'] ?: 'No findings recorded yet.') ?></p>
-            </div>
-        </div>
-    </section>
-
-    <section class="clinic-card p-6">
-        <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-5">Follow-up Notes & Clearance</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-                <p class="clinic-label">Clearance Status</p>
-                <span class="badge <?= ape_status_badge_class($record['clearance_status']) ?>"><?= e($record['clearance_status']) ?></span>
-            </div>
-            <div>
-                <p class="clinic-label">Follow-up Required</p>
-                <p class="text-sm font-bold text-slate-700 mb-0"><?= (int)$record['follow_up_required'] ? 'Yes' : 'No' ?></p>
-            </div>
-            <div class="sm:col-span-2">
-                <p class="clinic-label">Private Clinic Notes</p>
-                <p class="text-sm font-bold text-slate-700 mb-0 whitespace-pre-wrap"><?= e($record['clinical_remarks'] ?: 'No private follow-up notes yet.') ?></p>
-            </div>
-        </div>
-    </section>
-</div>
-
-<section class="clinic-card p-6">
-    <div class="flex items-center justify-between gap-4 mb-5">
-        <div>
-            <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-1">Notes & Extracted Text</h2>
-            <p class="text-xs font-bold text-slate-500 mb-0">Supporting notes only. These do not replace the guided next action above.</p>
-        </div>
-    </div>
-    <form method="post" class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        <input type="hidden" name="action" value="save_notes">
-        <div>
-            <label class="clinic-label">Private Clinical Remarks</label>
-            <textarea class="clinic-textarea" name="clinical_remarks" rows="5"><?= e($record['clinical_remarks']) ?></textarea>
-        </div>
-        <div>
-            <label class="clinic-label">Student-Visible Note</label>
-            <textarea class="clinic-textarea" name="student_visible_note" rows="5"><?= e($record['student_visible_note']) ?></textarea>
-        </div>
-        <div>
-            <label class="clinic-label">Extracted Text / Manual Entry</label>
-            <textarea class="clinic-textarea" name="extracted_text" rows="5"><?= e($record['extracted_text']) ?></textarea>
-        </div>
-        <div class="xl:col-span-3">
-            <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined text-[14px]">save</span> Save Notes</button>
-        </div>
-    </form>
-</section>
-
-<section class="clinic-card overflow-hidden">
-    <div class="p-6 border-b border-slate-100">
-        <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-1">Activity History</h2>
-        <p class="text-xs font-bold text-slate-500 mb-0">Recent clinic actions for this APE record.</p>
-    </div>
-    <div class="divide-y divide-slate-100">
-        <?php foreach ($activities as $activity): ?>
-            <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-2">
-                <div>
-                    <strong class="text-sm text-slate-800"><?= e($activity['action_label']) ?></strong>
-                    <?php if ($activity['notes']): ?>
-                        <p class="text-xs font-bold text-slate-500 mt-1 mb-0"><?= e($activity['notes']) ?></p>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                    <div>
+                        <strong class="text-sm text-slate-800"><?= e($record['document_type']) ?></strong>
+                        <p class="text-xs font-bold text-slate-400 mb-0">
+                            <?= $record['document_path'] ? 'Submitted online for clinic archive' : 'Waiting for online submission' ?>
+                        </p>
+                    </div>
+                    <?php if ($record['document_path']): ?>
+                        <a href="<?= app_url($record['document_path']) ?>" target="_blank" class="btn btn-sm btn-outline text-decoration-none">View File</a>
                     <?php endif; ?>
                 </div>
-                <p class="text-xs font-bold text-slate-400 mb-0"><?= e($activity['user_name'] ?? 'System') ?> - <?= e(date('M d, Y g:i A', strtotime($activity['created_at']))) ?></p>
+                <div>
+                    <p class="clinic-label">Verification Status</p>
+                    <span class="badge <?= ape_status_badge_class($record['verification_status']) ?>"><?= e($record['verification_status']) ?></span>
+                </div>
             </div>
-        <?php endforeach; ?>
-        <?php if (!$activities): ?>
-            <div class="empty-state">
-                <span class="material-symbols-outlined">history</span>
-                <p class="empty-state-title">No activity yet</p>
-                <p class="empty-state-text">Workflow actions will appear here after clinic staff updates this record.</p>
+        </section>
+        <?php endif; ?>
+
+        <!-- Phase 3: Clinic Findings & Follow-up (Conditional) -->
+        <?php if ((int)$record['follow_up_required'] === 1 || $record['result_status'] !== 'Pending'): ?>
+        <section class="clinic-card p-6 border-l-4 border-amber-400">
+            <div class="flex items-center gap-3 mb-5 border-b border-slate-100 pb-4">
+                <span class="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-black text-xs">3</span>
+                <h2 class="font-headline text-xl font-extrabold text-[#17261d] m-0">Phase 3: Medical Clearance</h2>
             </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
+                <div>
+                    <p class="clinic-label">Finding Status</p>
+                    <span class="badge <?= ape_status_badge_class($record['result_status']) ?>"><?= e($record['result_status']) ?></span>
+                </div>
+                <div>
+                    <p class="clinic-label">Clearance Status</p>
+                    <span class="badge <?= ape_status_badge_class($record['clearance_status']) ?>"><?= e($record['clearance_status']) ?></span>
+                </div>
+                <div class="sm:col-span-2">
+                    <p class="clinic-label">Follow-up Notes / Instructions</p>
+                    <p class="text-sm font-bold text-slate-700 mb-0 whitespace-pre-wrap"><?= e($record['result_notes'] ?: 'No specific follow-up instructions.') ?></p>
+                </div>
+            </div>
+            <div class="flex items-center justify-between gap-3 p-4 rounded-2xl bg-amber-50/50 border border-amber-100">
+                <div>
+                    <strong class="text-sm text-amber-900">Follow-up Clearance File</strong>
+                    <p class="text-xs font-bold text-amber-700/70 mb-0">
+                        <?= $record['clearance_document_path'] ? 'Submitted for approval' : 'No clearance file submitted yet' ?>
+                    </p>
+                </div>
+                <?php if ($record['clearance_document_path']): ?>
+                    <a href="<?= app_url($record['clearance_document_path']) ?>" target="_blank" class="btn btn-sm btn-outline text-decoration-none border-amber-200 text-amber-700 hover:bg-amber-100">View Clearance</a>
+                <?php endif; ?>
+            </div>
+        </section>
         <?php endif; ?>
     </div>
-</section>
+
+    <!-- Sidebar Content -->
+    <div class="space-y-6">
+        <section class="clinic-card p-6">
+            <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-4">Student Information</h2>
+            <dl class="space-y-4">
+                <div>
+                    <dt class="clinic-label">Student Name</dt>
+                    <dd class="text-sm font-bold text-slate-700"><?= e($fullName) ?></dd>
+                </div>
+                <div>
+                    <dt class="clinic-label">Student ID</dt>
+                    <dd class="text-sm font-bold text-slate-700"><?= e($record['student_number']) ?></dd>
+                </div>
+                <div>
+                    <dt class="clinic-label">Course / Section</dt>
+                    <dd class="text-sm font-bold text-slate-700"><?= e($record['course_section'] ?? 'Not set') ?></dd>
+                </div>
+                <div>
+                    <dt class="clinic-label">Purpose</dt>
+                    <dd class="text-sm font-bold text-slate-700">Freshman APE medical record</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="clinic-card p-6">
+            <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-4">Additional Notes</h2>
+            <form method="post" class="space-y-4">
+                <input type="hidden" name="action" value="save_notes">
+                <div>
+                    <label class="clinic-label">Student-Visible Note</label>
+                    <textarea class="clinic-textarea" name="student_visible_note" rows="3" placeholder="Notes the student can see..."><?= e($record['student_visible_note']) ?></textarea>
+                </div>
+                <div>
+                    <label class="clinic-label">Extracted Text / Manual Entry</label>
+                    <textarea class="clinic-textarea" name="extracted_text" rows="3" placeholder="OCR text or manual data entry..."><?= e($record['extracted_text']) ?></textarea>
+                </div>
+                <button class="btn btn-primary w-full"><span class="material-symbols-outlined text-[18px]">save</span> Save Notes</button>
+            </form>
+        </section>
+
+        <section class="clinic-card overflow-hidden">
+            <div class="p-6 border-b border-slate-100">
+                <h2 class="font-headline text-xl font-extrabold text-[#17261d] m-0">Activity History</h2>
+            </div>
+            <div class="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                <?php foreach ($activities as $activity): ?>
+                    <div class="p-4">
+                        <strong class="text-sm text-slate-800 block"><?= e($activity['action_label']) ?></strong>
+                        <?php if ($activity['notes']): ?>
+                            <p class="text-xs font-bold text-slate-500 mt-1 mb-1"><?= e($activity['notes']) ?></p>
+                        <?php endif; ?>
+                        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2 mb-0">
+                            <?= e($activity['user_name'] ?? 'System') ?> &bull; <?= e(date('M d, Y g:i A', strtotime($activity['created_at']))) ?>
+                        </p>
+                    </div>
+                <?php endforeach; ?>
+                <?php if (!$activities): ?>
+                    <div class="p-6 text-center">
+                        <span class="material-symbols-outlined text-slate-300 text-3xl mb-2">history</span>
+                        <p class="text-xs font-bold text-slate-500 m-0">No activity yet</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+    </div>
+</div>
 
 <?php render_footer(); ?>

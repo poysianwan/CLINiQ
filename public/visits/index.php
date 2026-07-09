@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 require_once __DIR__ . '/../../app/helpers/view.php';
 require_login();
@@ -51,20 +51,31 @@ foreach ($riskCountQuery->fetchAll() as $rc) {
     $riskCounts[strtolower($rc['risk_level'])] = (int)$rc['cnt'];
 }
 
+$visitColumns = [
+    ['headerName' => 'Date/Time', 'field' => 'dateTimeHtml', 'cellRenderer' => 'html', 'width' => 160],
+    ['headerName' => 'Patient', 'field' => 'patientHtml', 'cellRenderer' => 'html', 'minWidth' => 230],
+    ['headerName' => 'Complaint', 'field' => 'complaint', 'minWidth' => 220],
+    ['headerName' => 'Risk', 'field' => 'riskHtml', 'cellRenderer' => 'html', 'width' => 150],
+    ['headerName' => 'Recorded By', 'field' => 'recordedBy', 'minWidth' => 170],
+    ['headerName' => 'Action Taken', 'field' => 'actionTaken', 'minWidth' => 220],
+    ['headerName' => 'Open', 'field' => 'actionsHtml', 'cellRenderer' => 'html', 'sortable' => false, 'filter' => false, 'width' => 120],
+];
+$visitRows = [];
+foreach ($visits as $visit) {
+    $fullName = trim($visit['first_name'] . ' ' . $visit['last_name']);
+    $visitRows[] = [
+        'dateTimeHtml' => '<p class="text-sm font-bold text-slate-700 mb-0">' . e(date('M d, Y', strtotime($visit['visit_datetime']))) . '</p><p class="text-xs font-bold text-slate-400 mb-0">' . e(date('g:i A', strtotime($visit['visit_datetime']))) . '</p>',
+        'patientHtml' => '<div class="flex items-center gap-3"><div class="avatar ' . e(avatar_color($fullName)) . '">' . e(initials($fullName)) . '</div><div><strong class="text-sm text-slate-800">' . e($fullName) . '</strong><div class="text-xs font-bold text-slate-400">' . e($visit['student_number']) . '</div></div></div>',
+        'complaint' => $visit['chief_complaint'],
+        'riskHtml' => '<span class="badge ' . e(risk_badge_class($visit['risk_level'])) . '">' . e($visit['risk_level']) . ' · ' . (int)$visit['risk_score'] . '</span>',
+        'recordedBy' => $visit['recorded_by_name'] ?? 'System',
+        'actionTaken' => $visit['action_taken'] ?: '-',
+        'actionsHtml' => '<a href="' . e(app_url('patients/view.php?id=' . (int)$visit['patient_id'])) . '" class="btn btn-sm btn-ghost text-decoration-none"><span class="material-symbols-outlined text-[14px]">visibility</span> View</a>',
+    ];
+}
+
 render_header('Clinic Visits');
 ?>
-
-<!-- ═══ Title ═══ -->
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-    <div>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Visit History</h1>
-        <p class="text-sm font-bold text-slate-500 mt-1">Track arrivals, triage notes, risk classification, and actions taken.</p>
-    </div>
-    <a class="btn btn-primary text-decoration-none" href="create.php">
-        <span class="material-symbols-outlined text-[20px]">add_notes</span>
-        Record Visit
-    </a>
-</div>
 
 <!-- ═══ Visits Table ═══ -->
 <section class="bg-white rounded-[2rem] border border-outline-variant/20 shadow-sm overflow-hidden">
@@ -77,7 +88,7 @@ render_header('Clinic Visits');
             </div>
             <form method="get" class="search-input-wrap" style="max-width: 280px;">
                 <span class="search-icon material-symbols-outlined">search</span>
-                <input type="text" name="q" value="<?= e($search) ?>" placeholder="Search name, ID, or complaint..." class="search-input">
+                <input id="visitsGridSearch" type="text" name="q" value="<?= e($search) ?>" placeholder="Search name, ID, or complaint..." class="search-input">
                 <?php if ($filterRisk !== 'all'): ?><input type="hidden" name="risk" value="<?= e($filterRisk) ?>"><?php endif; ?>
             </form>
         </div>
@@ -105,61 +116,11 @@ render_header('Clinic Visits');
         </div>
     </div>
 
-    <!-- Table -->
-    <div class="overflow-x-auto">
-        <table class="w-full text-left">
-            <thead>
-            <tr class="bg-slate-50/50 border-b border-outline-variant/10">
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date/Time</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Patient</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Complaint</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Risk</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Recorded By</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Action Taken</th>
-            </tr>
-            </thead>
-            <tbody class="divide-y divide-outline-variant/10">
-            <?php foreach ($visits as $visit):
-                $fullName = trim($visit['first_name'] . ' ' . $visit['last_name']);
-            ?>
-                <tr class="table-row-clickable" onclick="window.location.href='<?= app_url('patients/view.php?id=' . (int)$visit['patient_id']) ?>'">
-                    <td class="px-6 py-4">
-                        <p class="text-sm font-bold text-slate-700"><?= e(date('M d, Y', strtotime($visit['visit_datetime']))) ?></p>
-                        <p class="text-xs font-bold text-slate-400"><?= e(date('g:i A', strtotime($visit['visit_datetime']))) ?></p>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="avatar <?= avatar_color($fullName) ?>"><?= initials($fullName) ?></div>
-                            <div>
-                                <strong class="text-sm text-slate-800"><?= e($fullName) ?></strong>
-                                <div class="text-xs font-bold text-slate-400"><?= e($visit['student_number']) ?></div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-sm font-bold text-slate-600"><?= e($visit['chief_complaint']) ?></td>
-                    <td class="px-6 py-4">
-                        <span class="badge <?= risk_badge_class($visit['risk_level']) ?>">
-                            <?= e($visit['risk_level']) ?> · <?= (int) $visit['risk_score'] ?>
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 text-[13px] font-bold text-slate-500 italic"><?= e($visit['recorded_by_name'] ?? 'System') ?></td>
-                    <td class="px-6 py-4 text-sm font-bold text-slate-600 max-w-[200px] truncate"><?= e($visit['action_taken']) ?: '—' ?></td>
-                </tr>
-            <?php endforeach; ?>
-            <?php if (!$visits): ?>
-                <tr>
-                    <td colspan="6">
-                        <div class="empty-state">
-                            <span class="material-symbols-outlined">clinical_notes</span>
-                            <p class="empty-state-title"><?= $search || $filterRisk !== 'all' ? 'No matching visits' : 'No clinic visits yet' ?></p>
-                            <p class="empty-state-text"><?= $search ? 'Try a different search or filter.' : 'Record a clinic visit to get started.' ?></p>
-                        </div>
-                    </td>
-                </tr>
-            <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+    <?php render_ag_grid('visitsGrid', $visitColumns, $visitRows, [
+        'searchInput' => 'visitsGridSearch',
+        'emptyTitle' => $search || $filterRisk !== 'all' ? 'No matching visits' : 'No clinic visits yet',
+        'emptyText' => $search ? 'Try a different search or filter.' : 'Record a clinic visit to get started.',
+    ]); ?>
 
     <!-- Pagination -->
     <?php if ($totalPages > 1): ?>

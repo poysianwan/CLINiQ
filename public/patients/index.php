@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 require_once __DIR__ . '/../../app/helpers/view.php';
 require_login();
@@ -30,20 +30,28 @@ if ($search !== '') {
 }
 $patients = $stmt->fetchAll();
 
+$patientColumns = [
+    ['headerName' => 'Student No.', 'field' => 'studentNumber', 'width' => 150],
+    ['headerName' => 'Name', 'field' => 'nameHtml', 'cellRenderer' => 'html', 'minWidth' => 240],
+    ['headerName' => 'Course/Section', 'field' => 'courseSection', 'minWidth' => 190],
+    ['headerName' => 'Guardian Contact', 'field' => 'guardianContact', 'minWidth' => 180],
+    ['headerName' => 'Actions', 'field' => 'actionsHtml', 'cellRenderer' => 'html', 'sortable' => false, 'filter' => false, 'width' => 180],
+];
+$patientRows = [];
+foreach ($patients as $patient) {
+    $fullName = trim($patient['last_name'] . ', ' . $patient['first_name']);
+    $displayName = trim($patient['first_name'] . ' ' . $patient['last_name']);
+    $patientRows[] = [
+        'studentNumber' => $patient['student_number'],
+        'nameHtml' => '<div class="flex items-center gap-3"><div class="avatar ' . e(avatar_color($displayName)) . '">' . e(initials($displayName)) . '</div><strong class="text-sm text-slate-800">' . e($fullName) . '</strong></div>',
+        'courseSection' => $patient['course_section'],
+        'guardianContact' => $patient['guardian_contact'] ?: '-',
+        'actionsHtml' => '<div class="flex flex-wrap gap-2"><a class="btn btn-sm btn-ghost text-decoration-none" href="view.php?id=' . (int)$patient['id'] . '"><span class="material-symbols-outlined text-[14px]">visibility</span> View</a><a class="btn btn-sm btn-outline text-decoration-none" href="' . e(app_url('emergency.php?token=' . $patient['emergency_token'])) . '" target="_blank"><span class="material-symbols-outlined text-[14px]">qr_code_2</span> QR</a></div>',
+    ];
+}
+
 render_header('Patients');
 ?>
-
-<!-- ═══ Title ═══ -->
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-    <div>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Patient Records</h1>
-        <p class="text-sm font-bold text-slate-500 mt-1">Manage student profiles, emergency tags, and staff-only health details.</p>
-    </div>
-    <a class="btn btn-primary text-decoration-none" href="create.php">
-        <span class="material-symbols-outlined text-[20px]">person_add</span>
-        Add Patient
-    </a>
-</div>
 
 <!-- ═══ Patient Registry ═══ -->
 <section class="bg-white rounded-[2rem] border border-outline-variant/20 shadow-sm overflow-hidden">
@@ -56,64 +64,16 @@ render_header('Patients');
             </div>
             <form method="get" class="search-input-wrap" style="max-width: 280px;">
                 <span class="search-icon material-symbols-outlined">search</span>
-                <input type="text" name="q" value="<?= e($search) ?>" placeholder="Search name or student no..." class="search-input">
+                <input id="patientsGridSearch" type="text" name="q" value="<?= e($search) ?>" placeholder="Search name or student no..." class="search-input">
             </form>
         </div>
     </div>
 
-    <!-- Table -->
-    <div class="overflow-x-auto">
-        <table class="w-full text-left">
-            <thead>
-            <tr class="bg-slate-50/50 border-b border-outline-variant/10">
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student No.</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Course/Section</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Guardian Contact</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
-            </tr>
-            </thead>
-            <tbody class="divide-y divide-outline-variant/10">
-            <?php foreach ($patients as $patient):
-                $fullName = trim($patient['last_name'] . ', ' . $patient['first_name']);
-                $displayName = trim($patient['first_name'] . ' ' . $patient['last_name']);
-            ?>
-                <tr class="table-row-clickable" onclick="window.location.href='view.php?id=<?= (int)$patient['id'] ?>'">
-                    <td class="px-6 py-4 text-sm font-bold text-slate-600"><?= e($patient['student_number']) ?></td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="avatar <?= avatar_color($displayName) ?>"><?= initials($displayName) ?></div>
-                            <strong class="text-sm text-slate-800"><?= e($fullName) ?></strong>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-sm font-bold text-slate-600"><?= e($patient['course_section']) ?></td>
-                    <td class="px-6 py-4 text-sm font-bold text-slate-600"><?= e($patient['guardian_contact']) ?: '—' ?></td>
-                    <td class="px-6 py-4" onclick="event.stopPropagation()">
-                        <div class="flex flex-wrap gap-2">
-                            <a class="btn btn-sm btn-ghost text-decoration-none" href="view.php?id=<?= (int) $patient['id'] ?>">
-                                <span class="material-symbols-outlined text-[14px]">visibility</span> View
-                            </a>
-                            <a class="btn btn-sm btn-outline text-decoration-none" href="<?= app_url('emergency.php?token=' . $patient['emergency_token']) ?>" target="_blank">
-                                <span class="material-symbols-outlined text-[14px]">qr_code_2</span> QR
-                            </a>
-                        </div>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            <?php if (!$patients): ?>
-                <tr>
-                    <td colspan="5">
-                        <div class="empty-state">
-                            <span class="material-symbols-outlined">person_search</span>
-                            <p class="empty-state-title"><?= $search ? 'No patients found' : 'No patients yet' ?></p>
-                            <p class="empty-state-text"><?= $search ? 'Try a different search term.' : 'Add a patient to get started.' ?></p>
-                        </div>
-                    </td>
-                </tr>
-            <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+    <?php render_ag_grid('patientsGrid', $patientColumns, $patientRows, [
+        'searchInput' => 'patientsGridSearch',
+        'emptyTitle' => $search ? 'No patients found' : 'No patients yet',
+        'emptyText' => $search ? 'Try a different search term.' : 'Add a patient to get started.',
+    ]); ?>
 
     <!-- Pagination -->
     <?php if ($totalPages > 1): ?>

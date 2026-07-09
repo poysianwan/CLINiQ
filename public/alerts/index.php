@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 require_once __DIR__ . '/../../app/helpers/view.php';
 require_login();
@@ -24,13 +24,49 @@ foreach ($statusCountQuery->fetchAll() as $sc) {
     $statusCounts['all'] += (int)$sc['cnt'];
 }
 
+$alertColumns = [
+    ['headerName' => 'Status', 'field' => 'statusHtml', 'cellRenderer' => 'html', 'width' => 150],
+    ['headerName' => 'Patient', 'field' => 'patient', 'width' => 180],
+    ['headerName' => 'Reporter', 'field' => 'reporterHtml', 'cellRenderer' => 'html', 'minWidth' => 190],
+    ['headerName' => 'Location', 'field' => 'location'],
+    ['headerName' => 'Concern', 'field' => 'concernHtml', 'cellRenderer' => 'html', 'minWidth' => 240],
+    ['headerName' => 'Created', 'field' => 'created', 'width' => 150],
+    ['headerName' => 'Actions', 'field' => 'actionsHtml', 'cellRenderer' => 'html', 'sortable' => false, 'filter' => false, 'width' => 220],
+];
+$alertRows = [];
+foreach ($alerts as $alert) {
+    $patientName = trim(($alert['first_name'] ?? '') . ' ' . ($alert['last_name'] ?? ''));
+    $actions = '';
+    if ($alert['status'] === 'Pending') {
+        $actions = '<div class="flex justify-end gap-2">'
+            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="In Progress"><button type="submit" class="btn btn-sm btn-outline" title="Acknowledge"><span class="material-symbols-outlined text-[14px]">play_arrow</span> Ack</button></form>'
+            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="Cancelled"><button type="submit" class="btn btn-sm btn-ghost" title="Cancel alert"><span class="material-symbols-outlined text-[14px]">cancel</span> Cancel</button></form>'
+            . '</div>';
+    } elseif ($alert['status'] === 'In Progress') {
+        $actions = '<div class="flex justify-end gap-2">'
+            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="Resolved"><button type="submit" class="btn btn-sm btn-primary" title="Resolve"><span class="material-symbols-outlined text-[14px]">check</span> Resolve</button></form>'
+            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="Cancelled"><button type="submit" class="btn btn-sm btn-ghost" title="Cancel alert"><span class="material-symbols-outlined text-[14px]">cancel</span> Cancel</button></form>'
+            . '</div>';
+    }
+
+    $alertRows[] = [
+        'statusHtml' => '<span class="badge ' . e(status_badge_class($alert['status'])) . '">' . e($alert['status']) . '</span>',
+        'patient' => $patientName !== '' ? $patientName : 'Unlisted',
+        'reporterHtml' => '<p class="text-sm font-bold text-slate-600 mb-0">' . e($alert['reporter_name']) . '</p>' . ($alert['reporter_role'] ? '<p class="text-xs font-bold text-slate-400 mb-0">' . e($alert['reporter_role']) . '</p>' : ''),
+        'location' => $alert['location'],
+        'concernHtml' => '<p class="text-sm font-bold text-slate-800 mb-0">' . e($alert['concern']) . '</p>' . ($alert['details'] ? '<p class="text-xs font-bold text-slate-400 mt-0.5 mb-0 truncate">' . e($alert['details']) . '</p>' : ''),
+        'created' => date('M d, g:i A', strtotime($alert['created_at'])),
+        'actionsHtml' => $actions,
+    ];
+}
+
 render_header('Nurse Alerts');
 ?>
 
-<!-- ═══ Title ═══ -->
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div class="dashboard-hero flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-8">
     <div>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Nurse Alerts</h1>
+        <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2">Emergency</p>
+        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Nurse Alerts</h1>
         <p class="text-sm font-bold text-slate-500 mt-1">Live emergency reports from staff and QR/NFC scans.</p>
     </div>
     <div class="flex items-center gap-3">
@@ -45,15 +81,10 @@ render_header('Nurse Alerts');
     </div>
 </div>
 
-<!-- ═══ Alert Queue ═══ -->
+<!-- Alert Queue -->
 <section class="clinic-card overflow-hidden">
     <div class="p-6 border-b border-slate-100">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-                <h2 class="font-headline text-xl font-extrabold text-[#1c2a59] mb-1">Alert Queue</h2>
-                <p class="text-xs font-bold text-slate-500 mb-0">Newest reports appear first.</p>
-            </div>
-        </div>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"><div><h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-1">Alert Queue</h2><p class="text-xs font-bold text-slate-500 mb-0">Newest reports appear first.</p></div><div class="search-input-wrap w-full md:w-auto shrink-0" style="min-width: 280px;"><span class="search-icon material-symbols-outlined">search</span><input id="alertsGridSearch" type="text" placeholder="Search alerts..." class="search-input"></div></div>
 
         <!-- Status Filter Tabs -->
         <div class="flex items-center gap-2 mt-4 border-t border-slate-100 pt-4 overflow-x-auto scrollbar-hide">
@@ -78,74 +109,10 @@ render_header('Nurse Alerts');
         </div>
     </div>
 
-    <div class="overflow-x-auto">
-        <table class="w-full text-left">
-            <thead>
-            <tr class="bg-slate-50/50 border-b border-outline-variant/10">
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Patient</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Reporter</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Concern</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Created</th>
-                <th class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-            </tr>
-            </thead>
-            <tbody class="divide-y divide-outline-variant/10">
-            <?php foreach ($alerts as $alert):
-                $patientName = trim(($alert['first_name'] ?? '') . ' ' . ($alert['last_name'] ?? ''));
-            ?>
-                <tr class="hover:bg-slate-50/50 transition-colors">
-                    <td class="px-6 py-4"><span class="badge <?= status_badge_class($alert['status']) ?>"><?= e($alert['status']) ?></span></td>
-                    <td class="px-6 py-4 text-sm font-bold text-slate-700"><?= e($patientName) ?: 'Unlisted' ?></td>
-                    <td class="px-6 py-4">
-                        <p class="text-sm font-bold text-slate-600"><?= e($alert['reporter_name']) ?></p>
-                        <?php if ($alert['reporter_role']): ?>
-                            <p class="text-xs font-bold text-slate-400"><?= e($alert['reporter_role']) ?></p>
-                        <?php endif; ?>
-                    </td>
-                    <td class="px-6 py-4 text-sm font-bold text-slate-600"><?= e($alert['location']) ?></td>
-                    <td class="px-6 py-4">
-                        <p class="text-sm font-bold text-slate-800"><?= e($alert['concern']) ?></p>
-                        <?php if ($alert['details']): ?>
-                            <p class="text-xs font-bold text-slate-400 mt-0.5 max-w-[200px] truncate"><?= e($alert['details']) ?></p>
-                        <?php endif; ?>
-                    </td>
-                    <td class="px-6 py-4 text-xs font-bold text-slate-500"><?= e(date('M d, g:i A', strtotime($alert['created_at']))) ?></td>
-                    <td class="px-4 py-4 text-right">
-                        <?php if ($alert['status'] === 'Pending'): ?>
-                            <form method="post" action="update.php" style="display:inline;">
-                                <input type="hidden" name="id" value="<?= (int)$alert['id'] ?>">
-                                <input type="hidden" name="status" value="In Progress">
-                                <button type="submit" class="btn btn-sm btn-outline" title="Acknowledge">
-                                    <span class="material-symbols-outlined text-[14px]">play_arrow</span> Ack
-                                </button>
-                            </form>
-                        <?php elseif ($alert['status'] === 'In Progress'): ?>
-                            <form method="post" action="update.php" style="display:inline;">
-                                <input type="hidden" name="id" value="<?= (int)$alert['id'] ?>">
-                                <input type="hidden" name="status" value="Resolved">
-                                <button type="submit" class="btn btn-sm btn-primary" title="Resolve">
-                                    <span class="material-symbols-outlined text-[14px]">check</span> Resolve
-                                </button>
-                            </form>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            <?php if (!$alerts): ?>
-                <tr>
-                    <td colspan="7">
-                        <div class="empty-state">
-                            <span class="material-symbols-outlined">notifications_off</span>
-                            <p class="empty-state-title">No alerts found</p>
-                            <p class="empty-state-text"><?= $filterStatus !== 'all' ? 'No alerts with this status.' : 'No alerts have been submitted yet.' ?></p>
-                        </div>
-                    </td>
-                </tr>
-            <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+    <?php render_ag_grid('alertsGrid', $alertColumns, $alertRows, [
+        'searchInput' => 'alertsGridSearch',
+        'emptyTitle' => 'No alerts found',
+        'emptyText' => $filterStatus !== 'all' ? 'No alerts with this status.' : 'No alerts have been submitted yet.',
+    ]); ?>
 </section>
 <?php render_footer(); ?>

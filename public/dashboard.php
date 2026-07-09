@@ -2,43 +2,82 @@
 
 require_once __DIR__ . '/../app/helpers/view.php';
 require_once __DIR__ . '/../app/services/ApeWorkflow.php';
+require_once __DIR__ . '/../app/services/AppointmentWorkflow.php';
 require_login();
 ensure_ape_workflow_schema();
+ensure_appointment_schema();
 
-$counts = [
-    'patients' => (int)(db()->query('SELECT COUNT(*) AS total FROM patients')->fetch()['total'] ?? 0),
-    'pending_alerts' => (int)(db()->query("SELECT COUNT(*) AS total FROM nurse_alerts WHERE status = 'Pending'")->fetch()['total'] ?? 0),
-    'visits_today' => (int)(db()->query('SELECT COUNT(*) AS total FROM clinic_visits WHERE DATE(visit_datetime) = CURDATE()')->fetch()['total'] ?? 0),
-    'low_stock' => (int)(db()->query('SELECT COUNT(*) AS total FROM inventory_items WHERE quantity <= reorder_level')->fetch()['total'] ?? 0),
+// --- 1. Metrics & Analytics ---
+$metrics = [
+    'visits_today' => (int) (db()->query('SELECT COUNT(*) AS total FROM clinic_visits WHERE DATE(visit_datetime) = CURDATE()')->fetch()['total'] ?? 0),
+    'pending_alerts' => (int) (db()->query("SELECT COUNT(*) AS total FROM nurse_alerts WHERE status = 'Pending'")->fetch()['total'] ?? 0),
+    'low_stock' => (int) (db()->query('SELECT COUNT(*) AS total FROM inventory_items WHERE quantity <= reorder_level')->fetch()['total'] ?? 0),
+    'appointment_requests' => (int) (db()->query("SELECT COUNT(*) AS total FROM appointments WHERE status = 'Pending'")->fetch()['total'] ?? 0),
 ];
 
-$apeMetrics = [
-    'total' => (int)(db()->query('SELECT COUNT(*) AS total FROM ape_records')->fetch()['total'] ?? 0),
-    'digitized' => (int)(db()->query("SELECT COUNT(*) AS total FROM ape_records WHERE document_path IS NOT NULL AND document_path <> ''")->fetch()['total'] ?? 0),
-    'hard_copy_pending' => (int)(db()->query("SELECT COUNT(*) AS total FROM ape_records WHERE COALESCE(requirement_status, '') <> 'Pre-Verified'")->fetch()['total'] ?? 0),
-    'for_review' => (int)(db()->query("SELECT COUNT(*) AS total FROM ape_records WHERE COALESCE(requirement_status, '') <> 'Pre-Verified'")->fetch()['total'] ?? 0),
-    'online_pending' => (int)(db()->query("SELECT COUNT(*) AS total FROM ape_records WHERE requirement_status = 'Pre-Verified' AND (document_path IS NULL OR document_path = '' OR COALESCE(verification_status, 'Pending') IN ('Pending','Needs Correction'))")->fetch()['total'] ?? 0),
-    'follow_up' => (int)(db()->query("SELECT COUNT(*) AS total FROM ape_records WHERE follow_up_required = 1 OR workflow_status = 'Follow-up Required' OR clearance_status IN ('For Follow-up','Submitted')")->fetch()['total'] ?? 0),
-    'cleared' => (int)(db()->query("SELECT COUNT(*) AS total FROM ape_records WHERE workflow_status = 'Cleared' OR clearance_status = 'Cleared'")->fetch()['total'] ?? 0),
-];
-$clearanceRate = $apeMetrics['total'] > 0 ? round(($apeMetrics['cleared'] / $apeMetrics['total']) * 100) : 0;
+// APE Metrics (condensed)
+$apeTotal = (int) (db()->query('SELECT COUNT(*) AS total FROM ape_records')->fetch()['total'] ?? 0);
+$apeCleared = (int) (db()->query("SELECT COUNT(*) AS total FROM ape_records WHERE workflow_status = 'Cleared' OR clearance_status = 'Cleared'")->fetch()['total'] ?? 0);
+$metrics['ape_clearance_rate'] = $apeTotal > 0 ? round(($apeCleared / $apeTotal) * 100) : 0;
+$metrics['ape_pending_review'] = (int) (db()->query("SELECT COUNT(*) AS total FROM ape_records WHERE COALESCE(requirement_status, '') <> 'Pre-Verified'")->fetch()['total'] ?? 0);
 
-$stepCounts = [];
-$stepStmt = db()->query('SELECT workflow_status, COUNT(*) AS cnt FROM ape_records GROUP BY workflow_status');
-foreach ($stepStmt->fetchAll() as $row) {
-    $stepCounts[$row['workflow_status']] = (int)$row['cnt'];
-}
 
+// --- 2. Live Alerts (Emergency & High Priority) ---
+$activeAlerts = db()->query("
+    SELECT a.*, p.first_name, p.last_name
+    FROM nurse_alerts a
+    LEFT JOIN patients p ON p.id = a.patient_id
+    WHERE a.status = 'Pending'
+    ORDER BY a.created_at DESC
+    LIMIT 2
+")->fetchAll();
+
+// --- 3. Today's Appointments ---
+// We check the new appointments table
+$appointmentsStmt = db()->query("
+    SELECT a.*, p.first_name, p.last_name, p.student_number, p.course_section
+    FROM appointments a
+    JOIN patients p ON p.id = a.patient_id
+    WHERE DATE(a.appointment_datetime) = CURDATE()
+      AND a.status = 'Scheduled'
+    ORDER BY a.appointment_datetime ASC
+");
+$appointments = $appointmentsStmt ? $appointmentsStmt->fetchAll() : [];
+
+$pendingAppointments = db()->query("
+    SELECT a.*, p.first_name, p.last_name, p.student_number, p.course_section
+    FROM appointments a
+    JOIN patients p ON p.id = a.patient_id
+    WHERE a.status = 'Pending'
+    ORDER BY a.created_at DESC, a.appointment_datetime ASC
+    LIMIT 4
+")->fetchAll();
+
+// --- 4. Real-time Visitor Log (Clinic Visits Today) ---
+$visitorLogs = db()->query("
+    SELECT v.*, p.first_name, p.last_name, p.student_number, p.course_section
+    FROM clinic_visits v
+    JOIN patients p ON p.id = v.patient_id
+    WHERE DATE(v.visit_datetime) = CURDATE()
+    ORDER BY v.visit_datetime DESC
+")->fetchAll();
+
+// --- 5. APE Action Queue (Condensed) ---
 $allApeRecords = db()->query("
     SELECT a.*, p.first_name, p.last_name, p.student_number, p.course_section
     FROM ape_records a
     JOIN patients p ON p.id = a.patient_id
+    WHERE a.workflow_status NOT IN ('Cleared')
     ORDER BY a.updated_at DESC, a.created_at DESC
 ")->fetchAll();
+
 $dashboardQueues = ape_work_queues();
 $recordsByQueue = array_fill_keys(array_keys($dashboardQueues), []);
 foreach ($allApeRecords as $record) {
-    $recordsByQueue[ape_record_queue($record)][] = $record;
+    $queue = ape_record_queue($record);
+    if (isset($recordsByQueue[$queue])) {
+        $recordsByQueue[$queue][] = $record;
+    }
 }
 $apeQueue = [];
 foreach (['document_review', 'digital_submission', 'follow_up'] as $queueKey) {
@@ -47,337 +86,371 @@ foreach (['document_review', 'digital_submission', 'follow_up'] as $queueKey) {
         $apeQueue[] = $record;
     }
 }
-$apeQueue = array_slice($apeQueue, 0, 8);
+$apeQueue = array_slice($apeQueue, 0, 5); // Limit to 5 for condensed view
 
-$latestAlerts = db()->query("
-    SELECT a.*, p.first_name, p.last_name
-    FROM nurse_alerts a
-    LEFT JOIN patients p ON p.id = a.patient_id
-    WHERE a.status = 'Pending'
-    ORDER BY a.created_at DESC
-    LIMIT 4
-")->fetchAll();
+$visitorColumns = [
+    ['headerName' => 'Time', 'field' => 'time', 'width' => 100, 'minWidth' => 96, 'maxWidth' => 112, 'flex' => 0],
+    ['headerName' => 'Patient', 'field' => 'patientHtml', 'cellRenderer' => 'html', 'minWidth' => 150, 'flex' => 1],
+    ['headerName' => 'Complaint', 'field' => 'complaint', 'minWidth' => 170, 'flex' => 1.2],
+    ['headerName' => 'Risk', 'field' => 'riskHtml', 'cellRenderer' => 'html', 'width' => 112, 'minWidth' => 112, 'maxWidth' => 124, 'flex' => 0],
+];
+$visitorRows = [];
+foreach ($visitorLogs as $visit) {
+    $fullName = trim($visit['first_name'] . ' ' . $visit['last_name']);
+    $riskClass = 'badge-pending';
+    if ($visit['risk_level'] === 'Moderate')
+        $riskClass = 'badge-in-progress';
+    if ($visit['risk_level'] === 'High')
+        $riskClass = 'badge-high';
+    if ($visit['risk_level'] === 'Critical')
+        $riskClass = 'badge-high animate-pulse';
+    $visitorRows[] = [
+        'time' => date('h:i A', strtotime($visit['visit_datetime'])),
+        'patientHtml' => '<div class="font-bold text-slate-800 text-sm">' . e($fullName) . '</div><div class="text-[10px] text-slate-400">' . e($visit['student_number']) . '</div>',
+        'complaint' => $visit['chief_complaint'],
+        'riskHtml' => '<span class="badge ' . e($riskClass) . ' text-[9px]">' . e($visit['risk_level']) . '</span>',
+    ];
+}
 
-$stockWarnings = db()->query("
-    SELECT *
-    FROM inventory_items
-    WHERE quantity <= reorder_level
-    ORDER BY quantity ASC, item_name ASC
-    LIMIT 4
-")->fetchAll();
+$dashboardApeColumns = [
+    ['headerName' => 'Student', 'field' => 'studentHtml', 'cellRenderer' => 'html', 'minWidth' => 230],
+    ['headerName' => 'Work Queue', 'field' => 'queueHtml', 'cellRenderer' => 'html', 'width' => 170],
+    ['headerName' => 'Missing / Waiting For', 'field' => 'missing', 'minWidth' => 240],
+    ['headerName' => 'Action', 'field' => 'actionHtml', 'cellRenderer' => 'html', 'sortable' => false, 'filter' => false, 'width' => 210],
+];
+$dashboardApeRows = [];
+foreach ($apeQueue as $rec) {
+    $fullName = trim($rec['first_name'] . ' ' . $rec['last_name']);
+    $queueKey = $rec['_queue_key'];
+    $queue = $dashboardQueues[$queueKey];
+    $next = ape_next_action($rec);
+    $dashboardApeRows[] = [
+        'studentHtml' => '<div class="flex items-center gap-3"><div class="avatar ' . e(avatar_color($fullName)) . '">' . e(initials($fullName)) . '</div><div><strong class="text-sm text-slate-800">' . e($fullName) . '</strong><div class="text-[10px] font-bold text-slate-400">' . e($rec['student_number']) . '</div></div></div>',
+        'queueHtml' => '<span class="badge ' . ($queueKey === 'follow_up' ? 'badge-high' : 'badge-in-progress') . '">' . e($queue['short_title'] ?? $queue['title']) . '</span>',
+        'missing' => ape_missing_item($rec),
+        'actionHtml' => '<a href="' . e(app_url('ape/view.php?id=' . (int) $rec['id'])) . '" class="btn btn-sm btn-ghost border border-slate-200 hover:border-primary hover:text-primary text-decoration-none"><span class="material-symbols-outlined text-[14px]">' . e($next['icon']) . '</span>' . e($next['label']) . '</a>',
+    ];
+}
 
-render_header('Dashboard');
+render_header('Main Dashboard');
 ?>
 
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-    <div>
-        <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2">Clinic Dashboard</p>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Today's APE Work</h1>
-        <p class="text-sm font-bold text-slate-500 mt-1">Main clinic workspace for hard-copy document review, digital record keeping, follow-ups, and completed APE records.</p>
-    </div>
-    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <?php if ($apeMetrics['follow_up'] > 0): ?>
-            <a href="<?= app_url('ape/index.php?queue=follow_up') ?>" class="bg-red-50 border border-red-100 px-4 py-2 rounded-2xl flex items-center gap-3 text-decoration-none">
-                <span class="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center material-symbols-outlined text-[18px]">medical_information</span>
-                <span>
-                    <span class="block text-[9px] font-black text-red-700 uppercase tracking-widest">Follow-up</span>
-                    <span class="block text-[11px] font-bold text-red-900"><?= (int)$apeMetrics['follow_up'] ?> student(s) need clearance</span>
-                </span>
-            </a>
-        <?php endif; ?>
-        <a class="btn btn-primary text-decoration-none" href="<?= app_url('ape/index.php') ?>">
-            <span class="material-symbols-outlined text-[20px]">description</span>
-            Open APE Center
-        </a>
-    </div>
-</div>
+<div class="dashboard-page">
 
-<section class="clinic-card p-6 md:p-8 bg-white overflow-hidden">
-    <div class="flex flex-col xl:flex-row justify-between gap-6">
-        <div class="max-w-3xl">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-fixed border border-outline-variant text-primary text-[10px] font-black uppercase tracking-widest mb-4">
-                <span class="material-symbols-outlined text-[14px]">fact_check</span>
-                Primary Workflow
-            </div>
-            <h2 class="font-headline text-2xl md:text-3xl font-extrabold text-[#17261d] leading-tight">Start with the queue that has students waiting.</h2>
-            <p class="text-sm font-bold text-slate-500 mt-3 mb-0">The dashboard follows the corrected APE clinic flow: review hard-copy medical documents, wait for student online uploads, archive submissions, manage follow-up requirements, then complete the record.</p>
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 xl:min-w-[520px]">
-            <a href="<?= app_url('ape/index.php') ?>" class="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-decoration-none">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">APE Records</p>
-                <p class="font-headline text-3xl font-extrabold text-slate-800 mb-0"><?= (int)$apeMetrics['total'] ?></p>
-            </a>
-            <a href="<?= app_url('ape/index.php') ?>" class="rounded-2xl border border-outline-variant bg-primary-fixed p-4 text-decoration-none">
-                <p class="text-[10px] font-black text-primary uppercase tracking-widest mb-2">Digitized</p>
-                <p class="font-headline text-3xl font-extrabold text-primary mb-0"><?= (int)$apeMetrics['digitized'] ?></p>
-            </a>
-            <a href="<?= app_url('ape/index.php') ?>" class="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-decoration-none">
-                <p class="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2">To Check</p>
-                <p class="font-headline text-3xl font-extrabold text-amber-900 mb-0"><?= (int)$apeMetrics['hard_copy_pending'] ?></p>
-            </a>
-            <a href="<?= app_url('ape/index.php?queue=completed') ?>" class="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-decoration-none">
-                <p class="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2">Cleared</p>
-                <p class="font-headline text-3xl font-extrabold text-emerald-800 mb-0"><?= (int)$clearanceRate ?>%</p>
-            </a>
-        </div>
-    </div>
-</section>
-
-<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-    <a href="<?= app_url('ape/index.php?queue=document_review') ?>" class="clinic-card p-6 text-decoration-none group">
-        <div class="flex items-start justify-between">
-            <div>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hard-Copy Review</p>
-                <p class="font-headline text-4xl text-slate-800 font-extrabold leading-none mt-2"><?= (int)$apeMetrics['for_review'] ?></p>
-            </div>
-            <span class="w-12 h-12 rounded-2xl bg-primary-fixed text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all material-symbols-outlined">rate_review</span>
-        </div>
-        <p class="text-xs font-bold text-slate-400 mt-4 mb-0">Hard-copy requirements waiting for clinic findings review</p>
-    </a>
-
-    <a href="<?= app_url('ape/index.php?queue=digital_submission') ?>" class="clinic-card p-6 text-decoration-none group">
-        <div class="flex items-start justify-between">
-            <div>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Online Keeping</p>
-                <p class="font-headline text-4xl text-slate-800 font-extrabold leading-none mt-2"><?= (int)$apeMetrics['online_pending'] ?></p>
-            </div>
-            <span class="w-12 h-12 rounded-2xl bg-primary-fixed text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all material-symbols-outlined">upload_file</span>
-        </div>
-        <p class="text-xs font-bold text-slate-400 mt-4 mb-0">Checked documents waiting for student upload or clinic archive</p>
-    </a>
-
-    <a href="<?= app_url('alerts/index.php') ?>" class="clinic-card p-6 text-decoration-none group">
-        <div class="flex items-start justify-between">
-            <div>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pending Alerts</p>
-                <p id="pending-alert-count" class="font-headline text-4xl text-slate-800 font-extrabold leading-none mt-2"><?= (int)$counts['pending_alerts'] ?></p>
-            </div>
-            <span class="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center group-hover:bg-red-600 group-hover:text-white transition-all material-symbols-outlined">notification_important</span>
-        </div>
-        <p class="text-xs font-bold text-slate-400 mt-4 mb-0">Emergency requests still visible to clinic staff</p>
-    </a>
-
-    <a href="<?= app_url('visits/index.php') ?>" class="clinic-card p-6 text-decoration-none group">
-        <div class="flex items-start justify-between">
-            <div>
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visits Today</p>
-                <p class="font-headline text-4xl text-slate-800 font-extrabold leading-none mt-2"><?= (int)$counts['visits_today'] ?></p>
-            </div>
-            <span class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all material-symbols-outlined">clinical_notes</span>
-        </div>
-        <p class="text-xs font-bold text-slate-400 mt-4 mb-0">Routine clinic visits remain accessible</p>
-    </a>
-</div>
-
-<section class="clinic-card p-6">
-    <div class="flex flex-col lg:flex-row justify-between gap-4 lg:items-center mb-6">
+    <div class="dashboard-hero flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-8">
         <div>
-            <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-1">Clinic Work Queues</h2>
-            <p class="text-xs font-bold text-slate-500 mb-0">Start with the first queue that has students. Each queue points to the next clinic task.</p>
+            <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2">Clinic Command Center</p>
+            <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Overview</h1>
+            <p class="text-sm font-bold text-slate-500 mt-1">Real-time alerts, daily schedule, and active patient logs.
+            </p>
         </div>
-        <a class="btn btn-ghost btn-sm text-decoration-none" href="<?= app_url('ape/create.php') ?>">
-            <span class="material-symbols-outlined text-[14px]">add</span>
-            Add APE Record
-        </a>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-8 gap-3">
-        <?php foreach ($dashboardQueues as $queueKey => $queue): ?>
-            <a href="<?= app_url('ape/index.php?queue=' . urlencode($queueKey)) ?>" class="rounded-2xl border border-outline-variant bg-white p-4 text-decoration-none hover:bg-primary-fixed hover:border-primary transition-colors">
-                <div class="flex items-center justify-between gap-2">
-                    <span class="w-7 h-7 rounded-xl bg-white text-primary border border-outline-variant flex items-center justify-center material-symbols-outlined text-[15px]"><?= e($queue['icon']) ?></span>
-                    <span class="text-lg font-headline font-extrabold text-slate-700"><?= count($recordsByQueue[$queueKey]) ?></span>
-                </div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-3 mb-0"><?= e($queue['short_title'] ?? $queue['title']) ?></p>
-            </a>
-        <?php endforeach; ?>
-    </div>
-</section>
 
-<div class="grid grid-cols-1 xl:grid-cols-[1.35fr_0.65fr] gap-6">
-    <section class="clinic-card overflow-hidden">
-        <div class="p-6 border-b border-slate-100">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 class="font-headline text-xl font-extrabold text-[#17261d]">APE Action Queue</h2>
-                    <p class="text-xs font-bold text-slate-500">Priority students needing hard-copy review, online document keeping, or follow-up clearance.</p>
-                </div>
+        <!-- Quick Actions Bar -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:items-center gap-3 w-full lg:w-auto">
+            <a class="btn btn-soft-danger text-decoration-none shadow-sm justify-center"
+                href="<?= app_url('alerts/create.php') ?>">
+                <span class="material-symbols-outlined text-[20px]">emergency_home</span>
+                Submit Alert
+            </a>
+            <a class="btn btn-primary text-decoration-none shadow-sm justify-center"
+                href="<?= app_url('visits/create.php') ?>">
+                <span class="material-symbols-outlined text-[20px]">clinical_notes</span>
+                Record Visit
+            </a>
+            <a class="btn btn-ghost bg-white border border-slate-200 text-decoration-none shadow-sm justify-center"
+                href="<?= app_url('patients/create.php') ?>">
+                <span class="material-symbols-outlined text-[20px]">person_add</span>
+                Add Patient
+            </a>
+        </div>
+    </div>
+
+    <!-- 1. Emergency & Alerts Banner -->
+    <?php if (count($activeAlerts) > 0): ?>
+        <section class="dashboard-alert-panel mb-8">
+            <div class="dashboard-alert-header">
                 <div class="flex items-center gap-3">
-                    <div class="search-input-wrap" style="max-width: 240px;">
-                        <span class="search-icon material-symbols-outlined">search</span>
-                        <input type="text" id="dashboardSearch" placeholder="Search name or ID..." class="search-input">
+                    <span class="dashboard-alert-icon material-symbols-outlined">warning</span>
+                    <div>
+                        <h2 class="font-headline font-extrabold text-base m-0">Active Emergency Alerts <span
+                                class="dashboard-alert-count"><?= count($activeAlerts) ?></span></h2>
+                        <p class="text-xs font-bold m-0">Clinic response needed for <?= count($activeAlerts) ?> pending
+                            alert(s).</p>
                     </div>
-                    <a href="<?= app_url('ape/index.php') ?>" class="btn btn-primary">
-                        <span class="material-symbols-outlined text-[18px]">open_in_new</span>
-                        Manage APE
-                    </a>
+                </div>
+                <a href="<?= app_url('alerts/index.php') ?>" class="dashboard-alert-link text-decoration-none">View All</a>
+            </div>
+            <div class="dashboard-alert-body">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <?php foreach ($activeAlerts as $alert): ?>
+                        <div class="dashboard-alert-card flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="dashboard-alert-chip">Pending</span>
+                                    <span
+                                        class="text-xs font-bold text-slate-400"><?= date('h:i A', strtotime($alert['created_at'])) ?></span>
+                                </div>
+                                <h3 class="font-bold text-slate-800 text-sm mb-1"><?= e($alert['concern']) ?></h3>
+                                <p class="text-xs text-slate-500 line-clamp-2 mb-3"><?= e($alert['details']) ?></p>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs font-bold text-slate-600">
+                                <span class="material-symbols-outlined text-[14px] text-red-500">location_on</span>
+                                <?= e($alert['location']) ?>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-2 mt-4">
+                                <form method="post" action="<?= app_url('alerts/update.php') ?>" class="flex-1">
+                                    <input type="hidden" name="id" value="<?= (int) $alert['id'] ?>">
+                                    <input type="hidden" name="status" value="In Progress">
+                                    <input type="hidden" name="redirect" value="../dashboard.php">
+                                    <button type="submit" class="btn btn-sm btn-danger w-full">
+                                        <span class="material-symbols-outlined text-[14px]">priority_high</span>
+                                        Acknowledge
+                                    </button>
+                                </form>
+                                <form method="post" action="<?= app_url('alerts/update.php') ?>" class="flex-1">
+                                    <input type="hidden" name="id" value="<?= (int) $alert['id'] ?>">
+                                    <input type="hidden" name="status" value="Resolved">
+                                    <input type="hidden" name="redirect" value="../dashboard.php">
+                                    <button type="submit" class="btn btn-sm btn-outline w-full">
+                                        <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                        Resolve
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
+        </section>
+    <?php endif; ?>
+
+    <!-- 2. Analytics & Metrics Ribbon -->
+    <div class="dashboard-metrics grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <a href="<?= app_url('visits/index.php') ?>"
+            class="dashboard-metric-card flex items-center gap-4 text-decoration-none hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[24px]">group</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Visits Today</p>
+                <p class="font-headline text-3xl font-extrabold text-slate-800 leading-none m-0">
+                    <?= $metrics['visits_today'] ?></p>
+            </div>
+        </a>
+        <a href="<?= app_url('inventory/index.php') ?>"
+            class="dashboard-metric-card flex items-center gap-4 text-decoration-none hover:shadow-md hover:border-amber-200 transition-all cursor-pointer">
+            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[24px]">inventory_2</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Low Stock</p>
+                <p class="font-headline text-3xl font-extrabold text-slate-800 leading-none m-0">
+                    <?= $metrics['low_stock'] ?></p>
+            </div>
+        </a>
+        <a href="<?= app_url('appointments/index.php') ?>"
+            class="dashboard-metric-card flex items-center gap-4 text-decoration-none hover:shadow-md hover:border-primary transition-all cursor-pointer">
+            <div class="w-12 h-12 rounded-2xl bg-primary-fixed text-primary flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[24px]">event_available</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Appt Requests</p>
+                <p class="font-headline text-3xl font-extrabold text-slate-800 leading-none m-0">
+                    <?= $metrics['appointment_requests'] ?></p>
+            </div>
+        </a>
+        <a href="<?= app_url('ape/index.php') ?>"
+            class="dashboard-metric-card flex items-center gap-4 text-decoration-none hover:shadow-md hover:border-primary transition-all cursor-pointer">
+            <div class="w-12 h-12 rounded-2xl bg-primary-fixed text-primary flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[24px]">fact_check</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">APE Clearance</p>
+                <p class="font-headline text-3xl font-extrabold text-slate-800 leading-none m-0">
+                    <?= $metrics['ape_clearance_rate'] ?>%</p>
+            </div>
+        </a>
+        <a href="<?= app_url('ape/index.php?queue=document_review') ?>"
+            class="dashboard-metric-card flex items-center gap-4 text-decoration-none hover:shadow-md hover:border-blue-200 transition-all cursor-pointer col-span-2 sm:col-span-1">
+            <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[24px]">pending_actions</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">APE To Review</p>
+                <p class="font-headline text-3xl font-extrabold text-slate-800 leading-none m-0">
+                    <?= $metrics['ape_pending_review'] ?></p>
+            </div>
+        </a>
+    </div>
+
+    <div class="dashboard-activity-grid grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8 items-stretch">
+        <!-- 3. Appointment Requests and Today's Schedule -->
+        <section class="dashboard-activity-card clinic-card overflow-hidden flex flex-col max-h-[600px]">
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined">event</span>
+                    </div>
+                    <div>
+                        <h2 class="font-headline text-lg font-extrabold text-[#17261d] m-0">Appointments</h2>
+                        <p class="text-xs font-bold text-slate-500 m-0">Approve student requests before they become
+                            scheduled visits.</p>
+                    </div>
+                </div>
+                <a href="<?= app_url('appointments/index.php') ?>"
+                    class="btn btn-sm btn-ghost text-slate-400 hover:text-primary text-decoration-none shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">calendar_month</span>
+                </a>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 space-y-5">
+                <div>
+                    <div class="flex items-center justify-between mb-2 px-1">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest m-0">For Clinic
+                            Approval</h3>
+                        <span class="badge badge-pending text-[9px]"><?= count($pendingAppointments) ?>
+                            request(s)</span>
+                    </div>
+                    <?php if (count($pendingAppointments) > 0): ?>
+                        <div class="space-y-2">
+                            <?php foreach ($pendingAppointments as $request):
+                                $time = date('M d, g:i A', strtotime($request['appointment_datetime']));
+                                $fullName = trim($request['first_name'] . ' ' . $request['last_name']);
+                                ?>
+                                <div class="p-3 rounded-xl border border-amber-100 bg-amber-50/50">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <h4 class="font-bold text-slate-800 text-sm mb-0 truncate"><?= e($fullName) ?></h4>
+                                            <p class="text-xs text-slate-500 mb-1 truncate"><?= e($request['student_number']) ?>
+                                                &bull; <?= e($request['purpose']) ?></p>
+                                            <p class="text-[11px] font-bold text-amber-700 mb-0 flex items-center gap-1">
+                                                <span class="material-symbols-outlined text-[13px]">schedule</span>
+                                                Requested <?= e($time) ?>
+                                            </p>
+                                        </div>
+                                        <span class="badge badge-pending text-[9px] shrink-0">Pending</span>
+                                    </div>
+                                    <div class="flex gap-2 mt-3">
+                                        <form method="post" action="<?= app_url('appointments/update.php') ?>" class="flex-1">
+                                            <input type="hidden" name="id" value="<?= (int) $request['id'] ?>">
+                                            <input type="hidden" name="status" value="Scheduled">
+                                            <input type="hidden" name="redirect" value="../dashboard.php">
+                                            <button class="btn btn-sm btn-primary w-full">
+                                                <span class="material-symbols-outlined text-[14px]">event_available</span>
+                                                Approve
+                                            </button>
+                                        </form>
+                                        <form method="post" action="<?= app_url('appointments/update.php') ?>" class="flex-1">
+                                            <input type="hidden" name="id" value="<?= (int) $request['id'] ?>">
+                                            <input type="hidden" name="status" value="Cancelled">
+                                            <input type="hidden" name="redirect" value="../dashboard.php">
+                                            <button class="btn btn-sm btn-ghost w-full">
+                                                <span class="material-symbols-outlined text-[14px]">cancel</span>
+                                                Cancel
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center text-slate-400">
+                            <p class="text-xs font-bold m-0">No pending appointment requests.</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-2 px-1">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest m-0">Approved Today
+                        </h3>
+                        <span class="badge badge-in-progress text-[9px]"><?= count($appointments) ?> scheduled</span>
+                    </div>
+                    <?php if (count($appointments) > 0): ?>
+                        <div class="space-y-2">
+                            <?php foreach ($appointments as $apt):
+                                $time = date('h:i A', strtotime($apt['appointment_datetime']));
+                                $fullName = trim($apt['first_name'] . ' ' . $apt['last_name']);
+                                $statusClass = $apt['status'] === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-white border-slate-200';
+                                ?>
+                                <div
+                                    class="flex items-center gap-4 p-4 rounded-xl border <?= $statusClass ?> hover:shadow-sm transition-shadow">
+                                    <div class="text-center w-16 shrink-0">
+                                        <span class="block text-lg font-headline font-black text-slate-800"><?= $time ?></span>
+                                    </div>
+                                    <div class="w-px h-10 bg-slate-200 shrink-0"></div>
+                                    <div class="flex-1 min-w-0">
+                                        <h4 class="font-bold text-slate-800 text-sm mb-0 truncate"><?= e($fullName) ?></h4>
+                                        <p class="text-xs text-slate-500 mb-1 truncate"><?= e($apt['student_number']) ?> &bull;
+                                            <?= e($apt['purpose']) ?></p>
+                                        <span class="badge badge-in-progress text-[9px]"><?= e($apt['status']) ?></span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div
+                            class="p-5 flex flex-col items-center justify-center text-slate-400 bg-slate-50 rounded-xl border border-slate-100">
+                            <span class="material-symbols-outlined text-[48px] mb-3 text-slate-200">event_busy</span>
+                            <p class="text-sm font-bold m-0">No approved appointments scheduled for today.</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. Real-time Visitor Log -->
+        <section class="dashboard-activity-card clinic-card overflow-hidden flex flex-col max-h-[600px]">
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined">directions_walk</span>
+                    </div>
+                    <div>
+                        <h2 class="font-headline text-lg font-extrabold text-[#17261d] m-0">Live Visitor Log</h2>
+                        <p class="text-xs font-bold text-slate-500 m-0">Patients who visited the clinic today.</p>
+                    </div>
+                </div>
+                <a href="<?= app_url('visits/index.php') ?>"
+                    class="btn btn-sm btn-ghost text-slate-400 hover:text-primary shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">list</span>
+                </a>
+            </div>
+            <div class="dashboard-visitor-grid-wrap flex-1 min-h-0 p-0">
+                <?php render_ag_grid('dashboardVisitorGrid', $visitorColumns, $visitorRows, [
+                    'pageSize' => 10,
+                    'height' => 'fill',
+                    'fitColumns' => true,
+                    'emptyTitle' => 'No visitors logged yet today.',
+                    'emptyText' => 'Recorded clinic visits will appear here.',
+                ]); ?>
+            </div>
+        </section>
+    </div>
+
+    <!-- 5. Condensed APE Action Queue -->
+    <section class="clinic-card overflow-hidden mb-6">
+        <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+                <h2 class="font-headline text-xl font-extrabold text-[#17261d] m-0">APE Action Queue</h2>
+                <p class="text-xs font-bold text-slate-500 m-0">Priority students needing hard-copy review, online
+                    document keeping, or follow-up clearance.</p>
+            </div>
+            <a href="<?= app_url('ape/index.php') ?>" class="btn btn-sm btn-primary shrink-0">
+                <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+                Open APE Center
+            </a>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-left">
-                <thead>
-                <tr class="bg-slate-50/50 border-b border-outline-variant/10">
-                    <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student</th>
-                    <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Work Queue</th>
-                    <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Missing / Waiting For</th>
-                    <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Updated</th>
-                    <th class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Next Action</th>
-                </tr>
-                </thead>
-                <tbody id="dashboardTableBody" class="divide-y divide-outline-variant/10">
-                <?php foreach ($apeQueue as $rec):
-                    $fullName = trim($rec['first_name'] . ' ' . $rec['last_name']);
-                    $searchData = $fullName . ' ' . $rec['student_number'] . ' ' . ($rec['document_type'] ?? '');
-                    $queueKey = $rec['_queue_key'];
-                    $queue = $dashboardQueues[$queueKey];
-                    $next = ape_next_action($rec);
-                ?>
-                    <tr class="hover:bg-slate-50/50 transition-colors" data-search="<?= e($searchData) ?>">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center gap-3">
-                                <div class="avatar <?= avatar_color($fullName) ?>"><?= initials($fullName) ?></div>
-                                <div>
-                                    <strong class="text-sm text-slate-800"><?= e($fullName) ?></strong>
-                                    <div class="text-xs font-bold text-slate-400"><?= e($rec['student_number']) ?><?= $rec['course_section'] ? ' - ' . e($rec['course_section']) : '' ?></div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="badge <?= $queueKey === 'follow_up' ? 'badge-high' : 'badge-in-progress' ?>"><?= e($queue['short_title'] ?? $queue['title']) ?></span>
-                            <div class="text-xs font-bold text-slate-400 mt-2"><?= e($rec['document_type'] ?: 'APE documents') ?></div>
-                        </td>
-                        <td class="px-6 py-4 text-sm font-bold text-slate-600 max-w-xs"><?= e(ape_missing_item($rec)) ?></td>
-                        <td class="px-6 py-4 text-xs font-bold text-slate-500"><?= e(date('M d, g:i A', strtotime($rec['updated_at'] ?: $rec['created_at']))) ?></td>
-                        <td class="px-4 py-4 text-right">
-                            <a href="<?= app_url('ape/view.php?id=' . (int)$rec['id']) ?>" class="btn btn-sm btn-primary text-decoration-none">
-                                <span class="material-symbols-outlined text-[14px]"><?= e($next['icon']) ?></span>
-                                <?= e($next['label']) ?>
-                            </a>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-                <?php if (!$apeQueue): ?>
-                    <tr>
-                        <td colspan="5">
-                            <div class="empty-state">
-                                <span class="material-symbols-outlined">description</span>
-                                <p class="empty-state-title">No APE records yet</p>
-                                <p class="empty-state-text">Create an APE record to start tracking freshman progress.</p>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+        <?php render_ag_grid('dashboardApeGrid', $dashboardApeColumns, $dashboardApeRows, [
+            'pageSize' => 10,
+            'height' => 'compact',
+            'emptyTitle' => 'No pending APE tasks in the queue.',
+            'emptyText' => 'Students with clinic actions will appear here.',
+        ]); ?>
     </section>
 
-    <aside class="space-y-6">
-        <section class="clinic-card p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-headline text-lg font-extrabold text-[#17261d]">Required Documents</h2>
-                <a href="<?= app_url('ape/index.php?queue=digital_submission') ?>" class="text-xs font-black text-primary text-decoration-none">Online keeping</a>
-            </div>
-            <div class="space-y-3">
-                <?php foreach (['Lab Request Form', 'UHS Consent Form', 'UHS Medical Record', 'UHS Dental Record', 'Referral Form'] as $documentName): ?>
-                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                        <div class="flex items-center gap-3">
-                            <span class="w-8 h-8 rounded-xl bg-primary-fixed text-primary flex items-center justify-center material-symbols-outlined text-[18px]">description</span>
-                            <strong class="text-sm text-slate-800"><?= e($documentName) ?></strong>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </section>
-
-        <section class="clinic-card p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-headline text-lg font-extrabold text-[#17261d]">Medical Purpose</h2>
-                <a href="<?= app_url('ape/index.php') ?>" class="text-xs font-black text-primary text-decoration-none">APE records</a>
-            </div>
-            <?php foreach (['Baseline health data', 'Detect underlying conditions', 'Manage common illnesses', 'Prevent disease spread', 'Determine fitness to study'] as $purpose): ?>
-                <div class="flex items-center gap-3 p-3 rounded-2xl bg-primary-fixed border border-outline-variant mb-3">
-                    <span class="w-8 h-8 rounded-xl bg-white text-primary flex items-center justify-center material-symbols-outlined text-[18px]">check_circle</span>
-                    <strong class="text-sm text-[#17261d]"><?= e($purpose) ?></strong>
-                </div>
-            <?php endforeach; ?>
-        </section>
-
-        <section class="clinic-card p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-headline text-lg font-extrabold text-[#17261d]">Live Alerts</h2>
-                <a href="<?= app_url('alerts/index.php') ?>" class="text-xs font-black text-primary text-decoration-none">View all</a>
-            </div>
-            <div id="latest-alerts" data-alert-feed="<?= app_url('api/alerts.php') ?>">
-                <?php foreach ($latestAlerts as $alert): ?>
-                    <div class="p-4 rounded-2xl bg-red-50 border border-red-100 mb-3">
-                        <div class="flex items-start justify-between gap-3">
-                            <strong class="text-sm text-red-900"><?= e($alert['concern']) ?></strong>
-                            <span class="badge badge-pending"><?= e($alert['status']) ?></span>
-                        </div>
-                        <p class="text-xs font-bold text-red-700 mb-0 mt-1"><?= e($alert['location']) ?></p>
-                    </div>
-                <?php endforeach; ?>
-                <?php if (!$latestAlerts): ?>
-                    <p class="text-sm font-bold text-slate-500 mb-0">No pending alerts.</p>
-                <?php endif; ?>
-            </div>
-        </section>
-
-        <section class="clinic-card p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="font-headline text-lg font-extrabold text-[#17261d]">Stock Watch</h2>
-                <a href="<?= app_url('inventory/index.php') ?>" class="text-xs font-black text-primary text-decoration-none">Manage</a>
-            </div>
-            <?php foreach ($stockWarnings as $item): ?>
-                <div class="flex items-center gap-3 p-3 rounded-2xl bg-amber-50 border border-amber-100 mb-3">
-                    <span class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center material-symbols-outlined text-[20px]">pill</span>
-                    <div class="flex-1 min-w-0">
-                        <strong class="block text-sm text-amber-900 truncate"><?= e($item['item_name']) ?></strong>
-                        <span class="text-xs font-bold text-amber-700"><?= (int)$item['quantity'] ?> <?= e($item['unit']) ?> left</span>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-            <?php if (!$stockWarnings): ?>
-                <p class="text-sm font-bold text-slate-500 mb-0">No low-stock items.</p>
-            <?php endif; ?>
-        </section>
-    </aside>
 </div>
-
-<section class="clinic-card p-6">
-    <h2 class="font-headline text-xl font-extrabold text-[#17261d] mb-4">Quick Actions</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-        <a class="btn btn-primary justify-center text-decoration-none" href="<?= app_url('ape/create.php') ?>">
-            <span class="material-symbols-outlined text-[20px]">add_notes</span>
-            Add APE
-        </a>
-        <a class="btn btn-primary justify-center text-decoration-none" href="<?= app_url('ape/index.php') ?>">
-            <span class="material-symbols-outlined text-[20px]">fact_check</span>
-            Manage APE
-        </a>
-        <a class="btn btn-ghost justify-center text-decoration-none" href="<?= app_url('patients/create.php') ?>">
-            <span class="material-symbols-outlined text-[20px]">person_add</span>
-            Add Patient
-        </a>
-        <a class="btn btn-ghost justify-center text-decoration-none" href="<?= app_url('visits/create.php') ?>">
-            <span class="material-symbols-outlined text-[20px]">clinical_notes</span>
-            Record Visit
-        </a>
-        <a class="btn btn-danger justify-center text-decoration-none" href="<?= app_url('alerts/create.php') ?>">
-            <span class="material-symbols-outlined text-[20px]">emergency_home</span>
-            Submit Alert
-        </a>
-        <a class="btn btn-ghost justify-center text-decoration-none" href="<?= app_url('reports/index.php') ?>">
-            <span class="material-symbols-outlined text-[20px]">analytics</span>
-            Reports
-        </a>
-    </div>
-</section>
-
-<script>
-    initTableSearch('dashboardSearch', '#dashboardTableBody');
-</script>
 
 <?php render_footer(); ?>

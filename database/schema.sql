@@ -149,6 +149,18 @@ CREATE TABLE passport_access_logs (
   FOREIGN KEY (patient_id) REFERENCES patients(id)
 );
 
+CREATE TABLE appointments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  patient_id INT NOT NULL,
+  appointment_datetime DATETIME NOT NULL,
+  purpose VARCHAR(255) NOT NULL,
+  status ENUM('Pending', 'Scheduled', 'Completed', 'Cancelled', 'No Show') NOT NULL DEFAULT 'Pending',
+  notes TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (patient_id) REFERENCES patients(id)
+);
+
 INSERT INTO users (name, email, password_hash, role)
 VALUES (
   'System Administrator',

@@ -30,12 +30,38 @@ foreach ($countQuery->fetchAll() as $sc) {
     $statusCounts['all'] += (int)$sc['cnt'];
 }
 
+$referralColumns = [
+    ['headerName' => 'Patient', 'field' => 'patientHtml', 'cellRenderer' => 'html', 'minWidth' => 240],
+    ['headerName' => 'Referred To', 'field' => 'referredTo', 'minWidth' => 200],
+    ['headerName' => 'Reason', 'field' => 'reason', 'minWidth' => 240],
+    ['headerName' => 'Date', 'field' => 'date', 'width' => 150],
+    ['headerName' => 'Status', 'field' => 'statusHtml', 'cellRenderer' => 'html', 'width' => 150],
+    ['headerName' => 'Actions', 'field' => 'actionsHtml', 'cellRenderer' => 'html', 'sortable' => false, 'filter' => false, 'width' => 170],
+];
+$referralRows = [];
+foreach ($referrals as $ref) {
+    $fullName = trim($ref['first_name'] . ' ' . $ref['last_name']);
+    $actions = '';
+    if ($ref['status'] === 'Pending') {
+        $actions = '<form method="post" action="update.php" style="display:inline;"><input type="hidden" name="id" value="' . (int)$ref['id'] . '"><input type="hidden" name="status" value="Completed"><button class="btn btn-sm btn-primary" title="Mark Completed"><span class="material-symbols-outlined text-[14px]">check</span> Complete</button></form>';
+    }
+    $referralRows[] = [
+        'patientHtml' => '<div class="flex items-center gap-3"><div class="avatar ' . e(avatar_color($fullName)) . '">' . e(initials($fullName)) . '</div><div><strong class="text-sm text-slate-800">' . e($fullName) . '</strong><div class="text-xs font-bold text-slate-400">' . e($ref['student_number']) . '</div></div></div>',
+        'referredTo' => $ref['referred_to'],
+        'reason' => $ref['reason'],
+        'date' => date('M d, Y', strtotime($ref['referral_date'])),
+        'statusHtml' => '<span class="badge ' . e(status_badge_class($ref['status'])) . '">' . e($ref['status']) . '</span>',
+        'actionsHtml' => $actions,
+    ];
+}
+
 render_header('Referrals');
 ?>
 
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+<div class="dashboard-hero flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-8">
     <div>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Referrals</h1>
+        <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2">External Care</p>
+        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Referrals</h1>
         <p class="text-sm font-bold text-slate-500 mt-1">Track patient referrals to external facilities and specialists.</p>
     </div>
     <a class="btn btn-primary text-decoration-none" href="create.php">
@@ -46,8 +72,16 @@ render_header('Referrals');
 
 <section class="clinic-card overflow-hidden">
     <div class="p-6 border-b border-slate-100">
-        <h2 class="font-headline text-xl font-extrabold text-[#1c2a59] mb-1">Referral Records</h2>
-        <p class="text-xs font-bold text-slate-500 mb-0"><?= $statusCounts['all'] ?> referral(s)</p>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h2 class="font-headline text-xl font-extrabold text-[#1c2a59] mb-1">Referral Records</h2>
+                <p class="text-xs font-bold text-slate-500 mb-0"><?= $statusCounts['all'] ?> referral(s)</p>
+            </div>
+            <div class="search-input-wrap w-full md:w-auto shrink-0" style="min-width: 280px;">
+                <span class="search-icon material-symbols-outlined">search</span>
+                <input id="referralsGridSearch" type="text" placeholder="Search referrals..." class="search-input">
+            </div>
+        </div>
 
         <div class="flex items-center gap-2 mt-4 border-t border-slate-100 pt-4 overflow-x-auto scrollbar-hide">
             <?php
@@ -57,70 +91,17 @@ render_header('Referrals');
                 $count = $statusCounts[$key] ?? 0;
                 $href = $key === 'all' ? '?' : '?status=' . urlencode($key);
             ?>
-                <a href="<?= $href ?>" class="status-tab <?= $isActive ? 'active' : '' ?> text-decoration-none">
+                <a href="<?= $href ?>" class="status-tab <?= $isActive ? 'active' : '' ?> text-decoration-none whitespace-nowrap">
                     <?= $label ?>
                     <span class="ml-1.5 px-2 py-0.5 rounded-full <?= $isActive ? 'bg-blue-100 text-primary' : 'bg-slate-100 text-slate-500' ?> text-[10px]"><?= $count ?></span>
                 </a>
             <?php endforeach; ?>
         </div>
     </div>
-
-    <div class="overflow-x-auto">
-        <table class="w-full text-left">
-            <thead>
-            <tr class="bg-slate-50/50 border-b border-outline-variant/10">
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Patient</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Referred To</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Reason</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
-                <th class="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                <th class="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-            </tr>
-            </thead>
-            <tbody class="divide-y divide-outline-variant/10">
-            <?php foreach ($referrals as $ref):
-                $fullName = trim($ref['first_name'] . ' ' . $ref['last_name']);
-            ?>
-                <tr class="hover:bg-slate-50/50 transition-colors">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="avatar <?= avatar_color($fullName) ?>"><?= initials($fullName) ?></div>
-                            <div>
-                                <strong class="text-sm text-slate-800"><?= e($fullName) ?></strong>
-                                <div class="text-xs font-bold text-slate-400"><?= e($ref['student_number']) ?></div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-sm font-bold text-slate-700"><?= e($ref['referred_to']) ?></td>
-                    <td class="px-6 py-4 text-sm font-bold text-slate-600 max-w-[200px] truncate"><?= e($ref['reason']) ?></td>
-                    <td class="px-6 py-4 text-sm font-bold text-slate-600"><?= e(date('M d, Y', strtotime($ref['referral_date']))) ?></td>
-                    <td class="px-6 py-4"><span class="badge <?= status_badge_class($ref['status']) ?>"><?= e($ref['status']) ?></span></td>
-                    <td class="px-4 py-4 text-right">
-                        <?php if ($ref['status'] === 'Pending'): ?>
-                            <form method="post" action="update.php" style="display:inline;">
-                                <input type="hidden" name="id" value="<?= (int)$ref['id'] ?>">
-                                <input type="hidden" name="status" value="Completed">
-                                <button class="btn btn-sm btn-primary" title="Mark Completed">
-                                    <span class="material-symbols-outlined text-[14px]">check</span> Complete
-                                </button>
-                            </form>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-            <?php if (!$referrals): ?>
-                <tr>
-                    <td colspan="6">
-                        <div class="empty-state">
-                            <span class="material-symbols-outlined">send</span>
-                            <p class="empty-state-title">No referrals</p>
-                            <p class="empty-state-text">Create a referral record to track external patient transfers.</p>
-                        </div>
-                    </td>
-                </tr>
-            <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+    <?php render_ag_grid('referralsGrid', $referralColumns, $referralRows, [
+        'searchInput' => 'referralsGridSearch',
+        'emptyTitle' => 'No referrals',
+        'emptyText' => 'Create a referral record to track external patient transfers.',
+    ]); ?>
 </section>
 <?php render_footer(); ?>

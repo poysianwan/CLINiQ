@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/../config/env.php';
+require_once __DIR__ . '/brand.php';
 
 function e(?string $value): string
 {
@@ -118,9 +119,9 @@ function render_header(string $title): void
                 theme: {
                     extend: {
                         colors: {
-                            primary: '#4f9f5e',
+                            primary: '#3F7D52',
                             'primary-fixed': '#e8f6ec',
-                            'primary-container': '#3f8c50',
+                            'primary-container': '#23422C',
                             'on-primary': '#ffffff',
                             surface: '#f4fbf6',
                             'on-surface': '#17261d',
@@ -135,14 +136,19 @@ function render_header(string $title): void
                 }
             };
         </script>
-        <link href="<?= app_url('assets/css/app.css?v=sidebar-shell') ?>" rel="stylesheet">
+        <link rel="stylesheet" href="<?= app_url('assets/vendor/ag-grid/ag-grid.css?v=31') ?>">
+        <link rel="stylesheet" href="<?= app_url('assets/vendor/ag-grid/ag-theme-quartz.css?v=31') ?>">
+        <script src="<?= app_url('assets/vendor/ag-grid/ag-grid-community.min.js?v=31') ?>"></script>
+        <link href="<?= app_url('assets/css/app.css?v=system-green-2') ?>" rel="stylesheet">
     </head>
     <body class="bg-surface font-body text-on-surface min-h-screen overflow-x-hidden">
     <?php if ($user): ?>
         <div class="app-shell">
             <aside class="app-sidebar">
                 <a href="<?= app_url('dashboard.php') ?>" class="app-brand text-decoration-none">
-                    <span class="app-brand-mark">C</span>
+                    <span class="app-brand-mark">
+                        <img src="<?= app_url('assets/img/clinic-logo.png') ?>" alt="PLP Health Services Department logo">
+                    </span>
                     <span class="app-brand-copy">
                         <span class="app-brand-title">CLINiQ</span>
                         <span class="app-brand-subtitle">University Health Services</span>
@@ -164,9 +170,17 @@ function render_header(string $title): void
             </aside>
             <div class="app-main">
                 <header class="app-topbar">
-                    <form class="app-search" action="<?= app_url('patients/index.php') ?>" method="get">
+                    <?php
+                    $searchAction = app_url('patients/index.php');
+                    $searchPlaceholder = 'Search student name or ID...';
+                    if (str_contains($title ?? '', 'APE')) {
+                        $searchAction = app_url('ape/index.php');
+                        $searchPlaceholder = 'Search APE records...';
+                    }
+                    ?>
+                    <form class="app-search" action="<?= $searchAction ?>" method="get">
                         <span class="material-symbols-outlined">search</span>
-                        <input name="q" placeholder="Search student name or ID..." autocomplete="off">
+                        <input name="q" placeholder="<?= $searchPlaceholder ?>" autocomplete="off" value="<?= isset($_GET['q']) ? e($_GET['q']) : '' ?>">
                     </form>
                     <div class="app-topbar-meta">
                         <span><?= e(date('l, F j')) ?></span>
@@ -197,9 +211,35 @@ function render_footer(): void
         <?php endif; ?>
     <?php render_flash_toasts(); ?>
     <script src="<?= app_url('assets/js/app.js') ?>"></script>
+    <script src="<?= app_url('assets/js/ag-grid-tables.js?v=3') ?>"></script>
     </body>
     </html>
     <?php
+}
+
+/**
+ * Render an AG Grid component.
+ */
+function render_ag_grid(string $gridId, array $columns, array $rows, array $options = []): void
+{
+    $pageSize = $options['pageSize'] ?? 25;
+    $height = $options['height'] ?? 'standard';
+    $heightClass = match ($height) {
+        'compact' => 'cliniq-ag-grid-compact',
+        'fill' => 'cliniq-ag-grid-fill',
+        default => 'cliniq-ag-grid-standard',
+    };
+    $searchInput = $options['searchInput'] ?? '';
+
+    echo '<div id="' . e($gridId) . '" class="cliniq-ag-grid ag-theme-quartz ' . $heightClass . '" data-ag-grid ' .
+         ($searchInput ? 'data-search-input="' . e($searchInput) . '" ' : '') .
+         (!empty($options['fitColumns']) ? 'data-fit-columns="true" ' : '') .
+         'data-page-size="' . (int)$pageSize . '" ' .
+         'data-empty-title="' . e($options['emptyTitle'] ?? '') . '" ' .
+         'data-empty-text="' . e($options['emptyText'] ?? '') . '">';
+    echo '<script type="application/json" data-grid-columns>' . json_encode($columns) . '</script>';
+    echo '<script type="application/json" data-grid-rows>' . json_encode($rows) . '</script>';
+    echo '</div>';
 }
 
 /**
