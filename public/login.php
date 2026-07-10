@@ -34,8 +34,8 @@ render_header('Login');
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        min-height: 34rem;
-        padding: 3rem 2.5rem;
+        min-height: 31rem;
+        padding: 2.35rem 2.25rem;
         background: #23422C;
         color: #ffffff;
     }
@@ -59,7 +59,7 @@ render_header('Login');
     }
 
     .staff-login-eyebrow {
-        margin: 1.7rem 0 0.65rem;
+        margin: 1.25rem 0 0.55rem;
         color: rgba(255, 255, 255, 0.66);
         font-size: 0.72rem;
         font-weight: 600;
@@ -68,7 +68,7 @@ render_header('Login');
     }
 
     .staff-login-title {
-        margin: 0 0 0.9rem;
+        margin: 0 0 0.75rem;
         color: #ffffff !important;
         font-size: clamp(2rem, 4vw, 2.7rem);
         font-weight: 700;
@@ -81,13 +81,13 @@ render_header('Login');
         color: rgba(255, 255, 255, 0.74);
         font-size: 0.9rem;
         font-weight: 400;
-        line-height: 1.58;
+        line-height: 1.48;
     }
 
     .staff-login-pulse {
         width: 100%;
         height: 2.5rem;
-        margin-top: 2rem;
+        margin-top: 1.5rem;
     }
 
     .staff-login-pulse path {
@@ -99,7 +99,7 @@ render_header('Login');
     }
 
     .staff-login-footnote {
-        margin: 2rem 0 0;
+        margin: 1.25rem 0 0;
         color: rgba(255, 255, 255, 0.56);
         font-size: 0.78rem;
         font-weight: 400;
@@ -109,11 +109,11 @@ render_header('Login');
         display: flex;
         flex-direction: column;
         justify-content: center;
-        padding: 3rem 2.75rem;
+        padding: 2.35rem 2.5rem;
     }
 
     .staff-field {
-        margin-bottom: 1.1rem;
+        margin-bottom: 0.9rem;
     }
 
     .staff-field label {
@@ -130,16 +130,22 @@ render_header('Login');
 
     .staff-login-input {
         width: 100%;
-        height: 2.85rem;
+        height: 2.65rem;
         padding: 0 0.9rem;
         border: 1px solid oklch(92% .01 230 / .88);
         border-radius: 0.625rem;
         background: #fbfcfa;
         color: #17261d;
-        font-size: 0.88rem;
+        font-size: 0.8125rem;
         font-weight: 500;
+        line-height: 1.35;
         outline: none;
         transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+    }
+
+    .staff-login-input::placeholder {
+        font-size: 0.8125rem;
+        line-height: 1.35;
     }
 
     .staff-login-input:focus {

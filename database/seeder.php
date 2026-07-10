@@ -112,7 +112,19 @@ for ($i = 0; $i < 60; $i++) {
     $daysAgo = rand(0, 180);
     $visitDate = date('Y-m-d H:i:s', strtotime("-$daysAgo days " . rand(8, 16) . ":" . str_pad(rand(0, 59), 2, '0', STR_PAD_LEFT) . ":00"));
     
-    $stmt = $db->prepare("INSERT INTO clinic_visits (patient_id, visit_datetime, chief_complaint, symptoms, temperature, blood_pressure, pulse_rate, risk_level, risk_score, action_taken, recorded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    if (in_array($c[5], ['High', 'Critical'], true) && $daysAgo <= 14) {
+        $visitStatus = 'Active';
+    } elseif (rand(1, 18) === 1) {
+        $visitStatus = 'Cancelled';
+    } elseif (rand(1, 8) === 1) {
+        $visitStatus = 'Unaddressed';
+    } else {
+        $visitStatus = 'Completed';
+    }
+    $visitPurpose = in_array($c[0], ['Sprained ankle', 'Cut on finger'], true) ? 'Wound Care' : 'Medical Consult';
+    $attendedBy = in_array($visitStatus, ['Active', 'Completed'], true) ? $adminId : null;
+
+    $stmt = $db->prepare("INSERT INTO clinic_visits (patient_id, visit_datetime, chief_complaint, symptoms, temperature, blood_pressure, pulse_rate, risk_level, risk_score, status, visit_purpose, visit_source, action_taken, recorded_by, attended_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([
         $pid,
         $visitDate,
@@ -123,8 +135,12 @@ for ($i = 0; $i < 60; $i++) {
         $c[4],
         $c[5],
         $c[6],
+        $visitStatus,
+        $visitPurpose,
+        'Staff Recorded',
         $c[7],
-        $adminId
+        $adminId,
+        $attendedBy
     ]);
 }
 

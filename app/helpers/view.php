@@ -93,6 +93,14 @@ function render_header(string $title): void
 {
     $user = current_user();
     $currentPath = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    $activeAlertCount = 0;
+    if ($user) {
+        try {
+            $activeAlertCount = (int) (db()->query("SELECT COUNT(*) AS total FROM nurse_alerts WHERE status = 'Pending'")->fetch()['total'] ?? 0);
+        } catch (Throwable $e) {
+            $activeAlertCount = 0;
+        }
+    }
     $nav = [
         'Dashboard' => ['url' => app_url('dashboard.php'), 'match' => 'dashboard.php', 'icon' => 'dashboard'],
         'Patients' => ['url' => app_url('patients/index.php'), 'match' => '/patients/', 'icon' => 'personal_injury'],
@@ -139,7 +147,7 @@ function render_header(string $title): void
         <link rel="stylesheet" href="<?= app_url('assets/vendor/ag-grid/ag-grid.css?v=31') ?>">
         <link rel="stylesheet" href="<?= app_url('assets/vendor/ag-grid/ag-theme-quartz.css?v=31') ?>">
         <script src="<?= app_url('assets/vendor/ag-grid/ag-grid-community.min.js?v=31') ?>"></script>
-        <link href="<?= app_url('assets/css/app.css?v=system-ui-2') ?>" rel="stylesheet">
+        <link href="<?= app_url('assets/css/app.css?v=table-fit-1') ?>" rel="stylesheet">
     </head>
     <body class="bg-surface font-body text-on-surface min-h-screen overflow-x-hidden">
     <?php if ($user): ?>
@@ -186,6 +194,13 @@ function render_header(string $title): void
                         <input name="q" placeholder="<?= $searchPlaceholder ?>" autocomplete="off" value="<?= isset($_GET['q']) ? e($_GET['q']) : '' ?>">
                     </form>
                     <div class="app-topbar-meta">
+                        <?php if ($activeAlertCount > 0): ?>
+                            <a href="<?= app_url('alerts/index.php') ?>" class="app-alert-link has-alerts text-decoration-none" title="<?= e($activeAlertCount . ' pending alert(s)') ?>">
+                                <span class="material-symbols-outlined">notification_important</span>
+                                <span class="app-alert-label">Pending Alerts</span>
+                                <span class="app-alert-badge"><?= $activeAlertCount > 99 ? '99+' : $activeAlertCount ?></span>
+                            </a>
+                        <?php endif; ?>
                         <span><?= e(date('l, F j')) ?></span>
                         <a href="<?= app_url('logout.php') ?>" class="app-logout text-decoration-none">
                             <span class="material-symbols-outlined">logout</span>
@@ -213,8 +228,8 @@ function render_footer(): void
         </div>
         <?php endif; ?>
     <?php render_flash_toasts(); ?>
-    <script src="<?= app_url('assets/js/app.js?v=sidebar-1') ?>"></script>
-    <script src="<?= app_url('assets/js/ag-grid-tables.js?v=3') ?>"></script>
+    <script src="<?= app_url('assets/js/app.js?v=cancel-icon-1') ?>"></script>
+    <script src="<?= app_url('assets/js/ag-grid-tables.js?v=4') ?>"></script>
     </body>
     </html>
     <?php
@@ -233,10 +248,11 @@ function render_ag_grid(string $gridId, array $columns, array $rows, array $opti
         default => 'cliniq-ag-grid-standard',
     };
     $searchInput = $options['searchInput'] ?? '';
+    $fitColumns = $options['fitColumns'] ?? true;
 
     echo '<div id="' . e($gridId) . '" class="cliniq-ag-grid ag-theme-quartz ' . $heightClass . '" data-ag-grid ' .
          ($searchInput ? 'data-search-input="' . e($searchInput) . '" ' : '') .
-         (!empty($options['fitColumns']) ? 'data-fit-columns="true" ' : '') .
+         ($fitColumns ? 'data-fit-columns="true" ' : 'data-fit-columns="false" ') .
          'data-page-size="' . (int)$pageSize . '" ' .
          'data-empty-title="' . e($options['emptyTitle'] ?? '') . '" ' .
          'data-empty-text="' . e($options['emptyText'] ?? '') . '">';

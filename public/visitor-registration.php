@@ -2,6 +2,8 @@
 
 require_once __DIR__ . '/../app/helpers/view.php';
 require_once __DIR__ . '/../app/services/RiskClassifier.php';
+require_once __DIR__ . '/../app/services/VisitWorkflow.php';
+ensure_visit_workflow_schema();
 
 $errors = [];
 $success = null;
@@ -75,8 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $risk = classify_patient_risk(['symptoms' => $symptoms]);
 
         $visitStmt = db()->prepare(
-            'INSERT INTO clinic_visits (patient_id, visit_datetime, chief_complaint, symptoms, risk_level, risk_score, action_taken, recorded_by)
-             VALUES (?, NOW(), ?, ?, ?, ?, ?, NULL)'
+            'INSERT INTO clinic_visits (patient_id, visit_datetime, chief_complaint, symptoms, risk_level, risk_score, status, visit_purpose, visit_source, action_taken, recorded_by)
+             VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, NULL)'
         );
         $visitStmt->execute([
             $patientId,
@@ -84,6 +86,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $symptoms,
             $risk['level'],
             $risk['score'],
+            'Unaddressed',
+            normalize_visit_purpose($form['reason']),
+            'Self Logbook',
             'Visitor/patient self-registration. Awaiting clinic assessment.',
         ]);
 
@@ -128,7 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         };
     </script>
-    <link href="<?= app_url('assets/css/app.css?v=system-ui-2') ?>" rel="stylesheet">
+    <link href="<?= app_url('assets/css/app.css?v=cancel-icon-1') ?>" rel="stylesheet">
     <style>
         body {
             min-height: 100vh;
@@ -146,8 +151,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .visit-main {
             flex: 1 1 auto;
             display: grid;
-            place-items: center;
-            padding: 1rem;
+            align-items: start;
+            justify-items: center;
+            padding: 7rem 1rem 1.5rem;
         }
 
         .visit-card {
@@ -181,15 +187,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .visit-input {
             width: 100%;
-            min-height: 2.7rem;
-            padding: 0.65rem 0.5rem 0.65rem 2.25rem;
+            min-height: 2.45rem;
+            padding: 0.55rem 0.5rem 0.55rem 2.2rem;
             border: 0;
             border-bottom: 2px solid #e2e8f0;
             border-radius: 0;
             background: transparent;
             color: #17261d;
-            font-size: 0.875rem;
+            font-size: 0.8125rem;
             font-weight: 500;
+            line-height: 1.35;
             outline: none;
             transition: border-color 0.16s ease, box-shadow 0.16s ease;
         }
@@ -205,17 +212,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .visit-input::placeholder {
             color: #cbd5e1;
+            font-size: 0.8125rem;
             font-weight: 400;
+            line-height: 1.35;
         }
 
         .visit-label {
             display: block;
-            margin: 0 0 0.35rem 0.25rem;
+            margin: 0 0 0.28rem 0.25rem;
             color: #94a3b8;
             font-size: 0.625rem;
             font-weight: 600;
             letter-spacing: 0.08em;
             text-transform: uppercase;
+        }
+
+        @media (max-width: 768px) {
+            .visit-main {
+                padding: 1rem;
+            }
         }
 
     </style>
@@ -358,7 +373,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
 
                         <div class="flex gap-3">
-                            <button class="btn btn-primary min-h-[3rem]" type="submit">
+                            <button class="btn btn-primary min-h-[3rem]" type="submit" data-confirm-submit data-confirm-type="primary" data-confirm-title="Register this clinic visit?" data-confirm-message="This will submit the logbook entry and notify the nurse station." data-confirm-toast="Registering visit...">
                                 Register Clinic Visit
                                 <span class="material-symbols-outlined text-[18px]">arrow_right_alt</span>
                             </button>
@@ -422,5 +437,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }, 1000);
     <?php endif; ?>
 </script>
+<script src="<?= app_url('assets/js/app.js?v=cancel-icon-1') ?>"></script>
 </body>
 </html>

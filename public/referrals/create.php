@@ -58,10 +58,12 @@ render_header('New Referral');
         </div>
     </div>
     <div class="mt-6 flex flex-wrap gap-3">
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" data-confirm-submit data-confirm-type="primary" data-confirm-title="Create this referral?" data-confirm-message="This will save a new referral record for the patient." data-confirm-toast="Creating referral...">
             <span class="material-symbols-outlined text-[18px]">send</span> Create Referral
         </button>
-        <a class="btn btn-ghost text-decoration-none" href="index.php">Cancel</a>
+        <a class="btn btn-ghost btn-cancel-icon text-decoration-none" href="index.php" title="Cancel" aria-label="Cancel">
+            <span class="material-symbols-outlined">cancel</span>
+        </a>
     </div>
 </form>
 <?php render_footer(); ?>

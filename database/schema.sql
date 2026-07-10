@@ -42,11 +42,32 @@ CREATE TABLE clinic_visits (
   pulse_rate INT NULL,
   risk_level ENUM('Low','Moderate','High','Critical') NOT NULL DEFAULT 'Low',
   risk_score INT NOT NULL DEFAULT 0,
+  status ENUM('Unaddressed','Active','Completed','Cancelled') NOT NULL DEFAULT 'Unaddressed',
+  visit_purpose VARCHAR(80) NULL,
+  visit_source ENUM('Self Logbook','Staff Recorded','Nurse Emergency') NOT NULL DEFAULT 'Staff Recorded',
   action_taken TEXT NULL,
   recorded_by INT NULL,
+  attended_by INT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (patient_id) REFERENCES patients(id),
-  FOREIGN KEY (recorded_by) REFERENCES users(id)
+  FOREIGN KEY (recorded_by) REFERENCES users(id),
+  FOREIGN KEY (attended_by) REFERENCES users(id)
+);
+
+CREATE TABLE visit_treatment_entries (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  visit_id INT NOT NULL,
+  symptoms_note TEXT NULL,
+  diagnosis TEXT NULL,
+  management_treatment TEXT NULL,
+  referral_type VARCHAR(120) NULL,
+  remarks TEXT NULL,
+  amendment_reason TEXT NULL,
+  created_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (visit_id) REFERENCES clinic_visits(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE ape_records (
@@ -96,10 +117,15 @@ CREATE TABLE nurse_alerts (
   location VARCHAR(160) NOT NULL,
   concern VARCHAR(255) NOT NULL,
   details TEXT NULL,
+  photo_path VARCHAR(255) NULL,
   status ENUM('Pending','In Progress','Resolved','Cancelled') NOT NULL DEFAULT 'Pending',
+  resolution_report TEXT NULL,
+  resolved_by INT NULL,
+  resolved_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (patient_id) REFERENCES patients(id)
+  FOREIGN KEY (patient_id) REFERENCES patients(id),
+  FOREIGN KEY (resolved_by) REFERENCES users(id)
 );
 
 CREATE TABLE incident_reports (
@@ -126,7 +152,11 @@ CREATE TABLE inventory_items (
   unit VARCHAR(40) NOT NULL DEFAULT 'pcs',
   reorder_level INT NOT NULL DEFAULT 0,
   expiration_date DATE NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  archived_at DATETIME NULL,
+  archived_reason VARCHAR(255) NULL,
+  archived_by INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 CREATE TABLE referrals (

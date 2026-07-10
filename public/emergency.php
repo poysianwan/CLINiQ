@@ -129,7 +129,7 @@ render_header('Emergency QR/NFC Response');
                     </div>
                     <div class="md:col-span-2">
                         <button
-                            class="w-full px-5 py-3 bg-red-600 text-white rounded-2xl text-sm font-black shadow-lg hover:bg-red-700">Report
+                            class="w-full px-5 py-3 bg-red-600 text-white rounded-2xl text-sm font-black shadow-lg hover:bg-red-700" data-confirm-submit data-confirm-type="danger" data-confirm-title="Submit this emergency report?" data-confirm-message="This will send the possible accident report to the clinic response queue." data-confirm-toast="Submitting emergency report...">Report
                             Possible Accident to Clinic</button>
                     </div>
                 </form>

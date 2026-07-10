@@ -123,25 +123,26 @@ foreach ($inventory as [$name, $category, $qty, $unit, $reorder, $expiryOffset])
 echo "Inventory ready: " . count($inventory) . "\n";
 
 $visits = [
-    ['2026-01024', '08:10:00', 'Fever with sore throat', 'Temperature 38.2 C, throat pain, mild body weakness', 38.2, '112/74', 92, 'Moderate', 3, 'Given Paracetamol 500mg, advised oral fluids, mask use, and sent home with guardian notification.'],
-    ['2026-01058', '08:55:00', 'Wheezing after PE class', 'Shortness of breath, audible wheeze, no chest pain', 37.0, '118/78', 104, 'High', 5, 'Nebulized Salbutamol given, monitored for 45 minutes, advised follow-up if symptoms recur.'],
-    ['2026-01119', '09:40:00', 'Right ankle sprain', 'Pain and swelling after basketball activity', 36.8, '120/80', 84, 'Low', 1, 'Cold compress applied, elastic bandage used, advised rest and elevation.'],
-    ['2026-01136', '10:25:00', 'Migraine episode', 'Headache with light sensitivity, no vomiting', 36.9, '110/70', 76, 'Moderate', 2, 'Rested in observation area, hydration encouraged, parent informed.'],
-    ['2026-01089', '11:15:00', 'Seafood allergy concern', 'Itchy lips and scattered hives after lunch', 37.1, '116/72', 88, 'Moderate', 3, 'Cetirizine 10mg given, observed for progression, canteen incident documented.'],
-    ['2026-01155', '13:05:00', 'Minor hand laceration', 'Small cut from laboratory glassware, bleeding controlled', 36.7, '118/76', 78, 'Low', 1, 'Wound cleaned, gauze dressing applied, advised return for dressing check.'],
-    ['2026-01178', '14:20:00', 'Allergic rhinitis flare-up', 'Sneezing, watery eyes, nasal congestion', 36.6, '108/68', 74, 'Low', 1, 'Cetirizine provided, advised avoiding dusty storage room.'],
+    ['2026-01024', '08:10:00', 'Fever with sore throat', 'Temperature 38.2 C, throat pain, mild body weakness', 38.2, '112/74', 92, 'Moderate', 3, 'Completed', 'Medical Consult', 'Given Paracetamol 500mg, advised oral fluids, mask use, and sent home with guardian notification.'],
+    ['2026-01058', '08:55:00', 'Wheezing after PE class', 'Shortness of breath, audible wheeze, no chest pain', 37.0, '118/78', 104, 'High', 5, 'Active', 'Emergency', 'Nebulized Salbutamol given, monitored for 45 minutes, advised follow-up if symptoms recur.'],
+    ['2026-01119', '09:40:00', 'Right ankle sprain', 'Pain and swelling after basketball activity', 36.8, '120/80', 84, 'Low', 1, 'Completed', 'Wound Care', 'Cold compress applied, elastic bandage used, advised rest and elevation.'],
+    ['2026-01136', '10:25:00', 'Migraine episode', 'Headache with light sensitivity, no vomiting', 36.9, '110/70', 76, 'Moderate', 2, 'Active', 'Health Monitoring', 'Rested in observation area, hydration encouraged, parent informed.'],
+    ['2026-01089', '11:15:00', 'Seafood allergy concern', 'Itchy lips and scattered hives after lunch', 37.1, '116/72', 88, 'Moderate', 3, 'Unaddressed', 'Medical Consult', 'Visitor/patient self-registration. Awaiting clinic assessment.'],
+    ['2026-01155', '13:05:00', 'Minor hand laceration', 'Small cut from laboratory glassware, bleeding controlled', 36.7, '118/76', 78, 'Low', 1, 'Completed', 'Wound Care', 'Wound cleaned, gauze dressing applied, advised return for dressing check.'],
+    ['2026-01178', '14:20:00', 'Allergic rhinitis flare-up', 'Sneezing, watery eyes, nasal congestion', 36.6, '108/68', 74, 'Low', 1, 'Completed', 'Medical Consult', 'Cetirizine provided, advised avoiding dusty storage room.'],
 ];
 
 $visitFind = $db->prepare('SELECT id FROM clinic_visits WHERE patient_id = ? AND chief_complaint = ? ORDER BY id DESC LIMIT 1');
-$visitInsert = $db->prepare('INSERT INTO clinic_visits (patient_id, visit_datetime, chief_complaint, symptoms, temperature, blood_pressure, pulse_rate, risk_level, risk_score, action_taken, recorded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-$visitUpdate = $db->prepare('UPDATE clinic_visits SET visit_datetime = ?, symptoms = ?, temperature = ?, blood_pressure = ?, pulse_rate = ?, risk_level = ?, risk_score = ?, action_taken = ?, recorded_by = ? WHERE id = ?');
-foreach ($visits as [$number, $time, $complaint, $symptoms, $temp, $bp, $pulse, $risk, $score, $action]) {
+$visitInsert = $db->prepare('INSERT INTO clinic_visits (patient_id, visit_datetime, chief_complaint, symptoms, temperature, blood_pressure, pulse_rate, risk_level, risk_score, status, visit_purpose, visit_source, action_taken, recorded_by, attended_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+$visitUpdate = $db->prepare('UPDATE clinic_visits SET visit_datetime = ?, symptoms = ?, temperature = ?, blood_pressure = ?, pulse_rate = ?, risk_level = ?, risk_score = ?, status = ?, visit_purpose = ?, visit_source = ?, action_taken = ?, recorded_by = ?, attended_by = ? WHERE id = ?');
+foreach ($visits as [$number, $time, $complaint, $symptoms, $temp, $bp, $pulse, $risk, $score, $status, $purpose, $action]) {
     $visitFind->execute([$patientIds[$number], $complaint]);
     $visitId = $visitFind->fetchColumn();
+    $attendedBy = in_array($status, ['Active', 'Completed'], true) ? $adminId : null;
     if ($visitId) {
-        $visitUpdate->execute([demo_date($time), $symptoms, $temp, $bp, $pulse, $risk, $score, $action, $adminId, $visitId]);
+        $visitUpdate->execute([demo_date($time), $symptoms, $temp, $bp, $pulse, $risk, $score, $status, $purpose, 'Staff Recorded', $action, $adminId, $attendedBy, $visitId]);
     } else {
-        $visitInsert->execute([$patientIds[$number], demo_date($time), $complaint, $symptoms, $temp, $bp, $pulse, $risk, $score, $action, $adminId]);
+        $visitInsert->execute([$patientIds[$number], demo_date($time), $complaint, $symptoms, $temp, $bp, $pulse, $risk, $score, $status, $purpose, 'Staff Recorded', $action, $adminId, $attendedBy]);
     }
 }
 echo "Today's visits ready: " . count($visits) . "\n";

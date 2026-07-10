@@ -106,10 +106,12 @@ render_header('Add Patient');
         </div>
     </div>
     <div class="mt-6 flex flex-wrap gap-3">
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" data-confirm-submit data-confirm-type="primary" data-confirm-title="Save this patient?" data-confirm-message="This will create a new patient record." data-confirm-toast="Saving patient...">
             <span class="material-symbols-outlined text-[18px]">person_add</span> Save Patient
         </button>
-        <a class="btn btn-ghost text-decoration-none" href="index.php">Cancel</a>
+        <a class="btn btn-ghost btn-cancel-icon text-decoration-none" href="index.php" title="Cancel" aria-label="Cancel">
+            <span class="material-symbols-outlined">cancel</span>
+        </a>
     </div>
 </form>
 <?php render_footer(); ?>

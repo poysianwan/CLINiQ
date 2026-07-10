@@ -115,10 +115,12 @@ render_header('Edit Patient');
         </div>
     </div>
     <div class="mt-6 flex flex-wrap gap-3">
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" data-confirm-submit data-confirm-type="primary" data-confirm-title="Save patient changes?" data-confirm-message="This will update the patient profile information." data-confirm-toast="Saving patient changes...">
             <span class="material-symbols-outlined text-[18px]">save</span> Save Changes
         </button>
-        <a class="btn btn-ghost text-decoration-none" href="view.php?id=<?= $id ?>">Cancel</a>
+        <a class="btn btn-ghost btn-cancel-icon text-decoration-none" href="view.php?id=<?= $id ?>" title="Cancel" aria-label="Cancel">
+            <span class="material-symbols-outlined">cancel</span>
+        </a>
     </div>
 </form>
 <?php render_footer(); ?>

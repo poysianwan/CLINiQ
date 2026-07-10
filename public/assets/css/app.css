@@ -17,12 +17,55 @@
     --cliniq-border: oklch(92% .01 230);
     --cliniq-accent-foreground: #23422C;
     --cliniq-danger: oklch(58% .19 25);
+    --cliniq-control-font-size: 0.8125rem;
+    --cliniq-control-line-height: 1.35;
+}
+
+html,
+body {
+    height: 100%;
+    overflow: hidden;
 }
 
 body {
     font-family: Inter, sans-serif;
     font-weight: 400;
     letter-spacing: 0;
+    scrollbar-color: #cbd8ce #f4fbf6;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
+}
+
+* {
+    scrollbar-color: #cbd8ce transparent;
+    scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+    width: 0.58rem;
+    height: 0.58rem;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #cbd8ce;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #aebfb3;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+    background: transparent;
 }
 
 h1,
@@ -93,7 +136,9 @@ h6,
    Sidebar, topbar, and page canvas replacing the old top-nav shell
    ============================================================ */
 .app-shell {
+    height: 100vh;
     min-height: 100vh;
+    overflow: hidden;
     background: oklch(98.5% .005 230);
 }
 
@@ -111,9 +156,14 @@ h6,
 }
 
 .app-main {
+    height: 100vh;
     min-height: 100vh;
     padding-left: 4.75rem;
+    overflow: hidden;
     transition: padding-left 0.18s ease;
+    scrollbar-color: #cbd8ce transparent;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
 }
 
 .app-topbar {
@@ -168,7 +218,7 @@ h6,
     top: 50%;
     transform: translateY(-50%);
     color: oklch(52% .02 250);
-    font-size: 1.125rem;
+    font-size: 1rem;
     line-height: 1;
     width: 1.25rem;
     text-align: center;
@@ -179,7 +229,7 @@ h6,
 
 .app-search input {
     width: 100%;
-    min-height: 2.5rem;
+    min-height: 2.35rem;
     box-sizing: border-box;
     padding: 0.55rem 0.9rem 0.55rem 3rem !important;
     text-indent: 0;
@@ -187,10 +237,18 @@ h6,
     border: 1px solid oklch(92% .01 230 / .82);
     border-radius: 0.625rem;
     color: oklch(22% .03 250);
-    font-size: 0.8125rem;
+    font-size: var(--cliniq-control-font-size);
     font-weight: 600;
+    line-height: var(--cliniq-control-line-height);
     outline: none;
     box-shadow: 0 1px 2px oklch(22% .03 250 / .03);
+}
+
+.app-search input::placeholder {
+    color: #6b7280;
+    font-size: var(--cliniq-control-font-size);
+    font-weight: 600;
+    line-height: var(--cliniq-control-line-height);
 }
 
 .app-search input:focus {
@@ -206,6 +264,60 @@ h6,
     color: #64756a;
     font-size: 0.75rem;
     font-weight: 500;
+}
+
+.app-alert-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.25rem;
+    padding: 0.48rem 0.82rem;
+    border: 1px solid rgba(199, 220, 205, 0.72);
+    border-radius: 0.85rem;
+    color: #64756a;
+    background: rgba(255, 255, 255, 0.68);
+    font-size: 0.75rem;
+    font-weight: 900;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-alert-link:hover {
+    color: var(--cliniq-primary);
+    border-color: rgba(63, 125, 82, 0.34);
+    background: #ffffff;
+}
+
+.app-alert-link.has-alerts {
+    color: #ffffff;
+    border-color: #dc2626;
+    background: #dc2626;
+    box-shadow: 0 12px 26px rgba(220, 38, 38, 0.22);
+}
+
+.app-alert-link.has-alerts:hover {
+    color: #ffffff;
+    border-color: #b91c1c;
+    background: #b91c1c;
+}
+
+.app-alert-link .material-symbols-outlined {
+    font-size: 1rem;
+}
+
+.app-alert-badge {
+    min-width: 1.1rem;
+    height: 1.1rem;
+    padding: 0 0.3rem;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    color: #b91c1c;
+    font-size: 0.62rem;
+    font-weight: 900;
+    line-height: 1;
 }
 
 .app-logout {
@@ -225,7 +337,13 @@ h6,
 }
 
 .app-content {
+    height: calc(100vh - 4.25rem);
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 1.25rem;
+    scrollbar-color: #cbd8ce transparent;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
 }
 
 .app-mobile-nav {
@@ -377,10 +495,14 @@ h6,
 }
 
 .auth-main {
-    min-height: 100vh;
+    height: 100svh;
+    min-height: 100svh;
+    overflow-y: auto;
+    overflow-x: hidden;
     display: grid;
-    place-items: center;
-    padding: 1.25rem;
+    align-items: start;
+    justify-items: center;
+    padding: 7rem 1.25rem 1.5rem;
     background: oklch(98.5% .005 230);
 }
 
@@ -916,22 +1038,13 @@ h6,
     display: none;
 }
 
-/* Custom styled scrollbar for main content */
-.styled-scrollbar::-webkit-scrollbar {
-    width: 6px;
-}
-
-.styled-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.styled-scrollbar::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-}
-
-.styled-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+/* Light styled scrollbar for contained panels */
+.styled-scrollbar,
+.modal-content,
+.app-content {
+    scrollbar-color: #cbd8ce transparent;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
 }
 
 /* ============================================================
@@ -982,7 +1095,7 @@ h6,
     top: 50%;
     transform: translateY(-50%);
     color: #94a3b8;
-    font-size: 1.25rem;
+    font-size: 1.05rem;
     line-height: 1;
     width: 1.5rem;
     text-align: center;
@@ -994,13 +1107,14 @@ h6,
 .search-input {
     width: 100%;
     box-sizing: border-box;
-    padding: 0.75rem 1rem 0.75rem 3.35rem !important;
+    padding: 0.68rem 1rem 0.68rem 3.1rem !important;
     text-indent: 0;
     background: white;
     border: 1px solid rgba(194, 198, 212, 0.2);
     border-radius: 1rem;
-    font-size: 0.8125rem;
+    font-size: var(--cliniq-control-font-size);
     font-weight: 600;
+    line-height: var(--cliniq-control-line-height);
     color: #334155;
     outline: none;
     transition: all 0.2s ease;
@@ -1008,7 +1122,10 @@ h6,
 }
 
 .search-input::placeholder {
-    color: #94a3b8;
+    color: #7c8798;
+    font-size: var(--cliniq-control-font-size);
+    font-weight: 600;
+    line-height: var(--cliniq-control-line-height);
 }
 
 .search-input:focus {
@@ -1040,7 +1157,8 @@ h6,
     background: #f8fafc;
     color: #1e293b;
     font-weight: 700;
-    font-size: 0.875rem;
+    font-size: var(--cliniq-control-font-size);
+    line-height: var(--cliniq-control-line-height);
     outline: none;
     transition: all 0.2s ease;
 }
@@ -1048,8 +1166,17 @@ h6,
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 select,
 textarea {
+    font-family: Inter, sans-serif;
+    font-size: var(--cliniq-control-font-size);
+    line-height: var(--cliniq-control-line-height);
     border-color: oklch(92% .01 230 / .85);
     border-radius: 0.75rem;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"])::placeholder,
+textarea::placeholder {
+    font-size: var(--cliniq-control-font-size);
+    line-height: var(--cliniq-control-line-height);
 }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
@@ -1383,6 +1510,31 @@ textarea:focus {
     border-radius: 0.5rem;
 }
 
+.btn-cancel-icon {
+    width: 2.65rem;
+    min-width: 2.65rem;
+    height: 2.65rem;
+    padding: 0;
+    border-radius: 999px;
+    gap: 0;
+}
+
+.btn-cancel-icon.btn-sm {
+    width: 2.1rem;
+    min-width: 2.1rem;
+    height: 2.1rem;
+    padding: 0;
+    border-radius: 999px;
+}
+
+.btn-cancel-icon .material-symbols-outlined {
+    font-size: 1.15rem;
+}
+
+.btn-cancel-icon.btn-sm .material-symbols-outlined {
+    font-size: 1rem;
+}
+
 .btn-icon {
     padding: 0.5rem;
     border-radius: 0.5rem;
@@ -1478,8 +1630,71 @@ textarea:focus {
     --ag-font-family: Inter, sans-serif;
     --ag-font-size: 13px;
     --ag-wrapper-border-radius: 0;
-    --ag-cell-horizontal-padding: 20px;
+    --ag-cell-horizontal-padding: 14px;
     --ag-range-selection-border-color: var(--cliniq-primary);
+}
+
+.cliniq-ag-grid .ag-root-wrapper,
+.cliniq-ag-grid .ag-root,
+.cliniq-ag-grid .ag-body,
+.cliniq-ag-grid .ag-body-viewport,
+.cliniq-ag-grid .ag-center-cols-viewport {
+    max-width: 100%;
+}
+
+.cliniq-ag-grid .ag-center-cols-viewport,
+.cliniq-ag-grid .ag-body-horizontal-scroll-viewport,
+.cliniq-ag-grid .ag-body-horizontal-scroll-container {
+    overflow-x: hidden !important;
+}
+
+.cliniq-ag-grid .ag-body-viewport,
+.cliniq-ag-grid .ag-center-cols-viewport,
+.cliniq-ag-grid .ag-center-cols-container,
+.cliniq-ag-grid .ag-body-vertical-scroll-viewport {
+    scrollbar-color: #cbd8ce transparent;
+    scrollbar-width: thin;
+}
+
+.cliniq-ag-grid .ag-body-viewport::-webkit-scrollbar,
+.cliniq-ag-grid .ag-center-cols-viewport::-webkit-scrollbar,
+.cliniq-ag-grid .ag-body-vertical-scroll-viewport::-webkit-scrollbar {
+    width: 0.55rem;
+    height: 0.55rem;
+}
+
+.cliniq-ag-grid .ag-body-viewport::-webkit-scrollbar-track,
+.cliniq-ag-grid .ag-center-cols-viewport::-webkit-scrollbar-track,
+.cliniq-ag-grid .ag-body-vertical-scroll-viewport::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.cliniq-ag-grid .ag-body-viewport::-webkit-scrollbar-thumb,
+.cliniq-ag-grid .ag-center-cols-viewport::-webkit-scrollbar-thumb,
+.cliniq-ag-grid .ag-body-vertical-scroll-viewport::-webkit-scrollbar-thumb {
+    background: #cbd8ce;
+    border: 2px solid #ffffff;
+    border-radius: 9999px;
+    background-clip: padding-box;
+}
+
+.cliniq-ag-grid .ag-body-viewport::-webkit-scrollbar-thumb:hover,
+.cliniq-ag-grid .ag-center-cols-viewport::-webkit-scrollbar-thumb:hover,
+.cliniq-ag-grid .ag-body-vertical-scroll-viewport::-webkit-scrollbar-thumb:hover {
+    background: #aebfb3;
+    border: 2px solid #ffffff;
+    background-clip: padding-box;
+}
+
+.cliniq-ag-grid .ag-body-vertical-scroll {
+    width: 0.7rem !important;
+    max-width: 0.7rem !important;
+    background: #ffffff;
+    border-left: 1px solid oklch(92% .01 230 / .45);
+}
+
+.cliniq-ag-grid .ag-body-horizontal-scroll {
+    display: none !important;
 }
 
 .cliniq-ag-grid-standard {
@@ -1513,11 +1728,41 @@ textarea:focus {
     display: flex;
     align-items: center;
     line-height: 1.35;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .cliniq-ag-grid .ag-cell-value,
 .cliniq-ag-grid .ag-cell-wrapper {
     width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.cliniq-ag-grid .ag-cell-value > *,
+.cliniq-ag-grid .ag-cell-wrapper > * {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.cliniq-ag-grid .ag-cell .flex {
+    min-width: 0;
+}
+
+.cliniq-ag-grid .ag-cell .btn {
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+}
+
+.cliniq-ag-grid .ag-cell strong,
+.cliniq-ag-grid .ag-cell p,
+.cliniq-ag-grid .ag-cell span:not(.material-symbols-outlined) {
+    overflow-wrap: anywhere;
 }
 
 .cliniq-ag-grid .ag-paging-panel {
@@ -1553,8 +1798,9 @@ textarea:focus {
 
 .cliniq-grid-empty p {
     margin: 0;
-    font-size: 0.8125rem;
+    font-size: 0.78rem;
     font-weight: 600;
+    line-height: 1.25;
 }
 
 /* ============================================================
@@ -1596,6 +1842,11 @@ textarea:focus {
     .cliniq-entry-header {
         position: static;
         padding: 1rem 1rem 0;
+    }
+
+    .auth-main {
+        min-height: auto;
+        padding: 1.25rem;
     }
 
     .toast-container {

@@ -132,6 +132,19 @@ foreach ($apeQueue as $rec) {
     ];
 }
 
+$dashboardUser = current_user() ?? [];
+$dashboardUserName = trim((string) ($dashboardUser['name'] ?? ''));
+$dashboardUserRole = strtolower((string) ($dashboardUser['role'] ?? ''));
+$dashboardRoleTitle = match ($dashboardUserRole) {
+    'nurse' => 'Nurse',
+    'doctor', 'physician' => 'Doctor',
+    default => '',
+};
+$dashboardDisplayName = $dashboardUserName !== '' ? $dashboardUserName : 'Clinic Staff';
+if ($dashboardRoleTitle !== '' && !preg_match('/^(nurse|dr\.?|doctor)\b/i', $dashboardDisplayName)) {
+    $dashboardDisplayName = $dashboardRoleTitle . ' ' . $dashboardDisplayName;
+}
+
 render_header('Main Dashboard');
 ?>
 
@@ -140,89 +153,13 @@ render_header('Main Dashboard');
     <div class="dashboard-hero flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-8">
         <div>
             <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2">Clinic Command Center</p>
-            <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Overview</h1>
+            <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Good day,
+                <?= e($dashboardDisplayName) ?>
+            </h1>
             <p class="text-sm font-bold text-slate-500 mt-1">Real-time alerts, daily schedule, and active patient logs.
             </p>
         </div>
-
-        <!-- Quick Actions Bar -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:items-center gap-3 w-full lg:w-auto">
-            <a class="btn btn-soft-danger text-decoration-none shadow-sm justify-center"
-                href="<?= app_url('alerts/create.php') ?>">
-                <span class="material-symbols-outlined text-[20px]">emergency_home</span>
-                Submit Alert
-            </a>
-            <a class="btn btn-primary text-decoration-none shadow-sm justify-center"
-                href="<?= app_url('visits/create.php') ?>">
-                <span class="material-symbols-outlined text-[20px]">clinical_notes</span>
-                Record Visit
-            </a>
-            <a class="btn btn-ghost bg-white border border-slate-200 text-decoration-none shadow-sm justify-center"
-                href="<?= app_url('patients/create.php') ?>">
-                <span class="material-symbols-outlined text-[20px]">person_add</span>
-                Add Patient
-            </a>
-        </div>
     </div>
-
-    <!-- 1. Emergency & Alerts Banner -->
-    <?php if (count($activeAlerts) > 0): ?>
-        <section class="dashboard-alert-panel mb-8">
-            <div class="dashboard-alert-header">
-                <div class="flex items-center gap-3">
-                    <span class="dashboard-alert-icon material-symbols-outlined">warning</span>
-                    <div>
-                        <h2 class="font-headline font-extrabold text-base m-0">Active Emergency Alerts <span
-                                class="dashboard-alert-count"><?= count($activeAlerts) ?></span></h2>
-                        <p class="text-xs font-bold m-0">Clinic response needed for <?= count($activeAlerts) ?> pending
-                            alert(s).</p>
-                    </div>
-                </div>
-                <a href="<?= app_url('alerts/index.php') ?>" class="dashboard-alert-link text-decoration-none">View All</a>
-            </div>
-            <div class="dashboard-alert-body">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <?php foreach ($activeAlerts as $alert): ?>
-                        <div class="dashboard-alert-card flex flex-col justify-between">
-                            <div>
-                                <div class="flex justify-between items-start mb-2">
-                                    <span class="dashboard-alert-chip">Pending</span>
-                                    <span
-                                        class="text-xs font-bold text-slate-400"><?= date('h:i A', strtotime($alert['created_at'])) ?></span>
-                                </div>
-                                <h3 class="font-bold text-slate-800 text-sm mb-1"><?= e($alert['concern']) ?></h3>
-                                <p class="text-xs text-slate-500 line-clamp-2 mb-3"><?= e($alert['details']) ?></p>
-                            </div>
-                            <div class="flex items-center gap-2 text-xs font-bold text-slate-600">
-                                <span class="material-symbols-outlined text-[14px] text-red-500">location_on</span>
-                                <?= e($alert['location']) ?>
-                            </div>
-                            <div class="flex flex-col sm:flex-row gap-2 mt-4">
-                                <form method="post" action="<?= app_url('alerts/update.php') ?>" class="flex-1">
-                                    <input type="hidden" name="id" value="<?= (int) $alert['id'] ?>">
-                                    <input type="hidden" name="status" value="In Progress">
-                                    <input type="hidden" name="redirect" value="../dashboard.php">
-                                    <button type="submit" class="btn btn-sm btn-danger w-full">
-                                        <span class="material-symbols-outlined text-[14px]">priority_high</span>
-                                        Acknowledge
-                                    </button>
-                                </form>
-                                <form method="post" action="<?= app_url('alerts/update.php') ?>" class="flex-1">
-                                    <input type="hidden" name="id" value="<?= (int) $alert['id'] ?>">
-                                    <input type="hidden" name="status" value="Resolved">
-                                    <input type="hidden" name="redirect" value="../dashboard.php">
-                                    <button type="submit" class="btn btn-sm btn-outline w-full">
-                                        <span class="material-symbols-outlined text-[14px]">check_circle</span>
-                                        Resolve
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </section>
-    <?php endif; ?>
 
     <!-- 2. Analytics & Metrics Ribbon -->
     <div class="dashboard-metrics grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
@@ -234,7 +171,8 @@ render_header('Main Dashboard');
             <div class="min-w-0">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Visits Today</p>
                 <p class="font-headline text-3xl font-extrabold text-slate-800 leading-none m-0">
-                    <?= $metrics['visits_today'] ?></p>
+                    <?= $metrics['visits_today'] ?>
+                </p>
             </div>
         </a>
         <a href="<?= app_url('inventory/index.php') ?>"
@@ -245,7 +183,8 @@ render_header('Main Dashboard');
             <div class="min-w-0">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Low Stock</p>
                 <p class="font-headline text-3xl font-extrabold text-slate-800 leading-none m-0">
-                    <?= $metrics['low_stock'] ?></p>
+                    <?= $metrics['low_stock'] ?>
+                </p>
             </div>
         </a>
         <a href="<?= app_url('appointments/index.php') ?>"
@@ -256,7 +195,8 @@ render_header('Main Dashboard');
             <div class="min-w-0">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Appt Requests</p>
                 <p class="font-headline text-3xl font-extrabold text-slate-800 leading-none m-0">
-                    <?= $metrics['appointment_requests'] ?></p>
+                    <?= $metrics['appointment_requests'] ?>
+                </p>
             </div>
         </a>
         <a href="<?= app_url('ape/index.php') ?>"
@@ -267,7 +207,8 @@ render_header('Main Dashboard');
             <div class="min-w-0">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">APE Clearance</p>
                 <p class="font-headline text-3xl font-extrabold text-slate-800 leading-none m-0">
-                    <?= $metrics['ape_clearance_rate'] ?>%</p>
+                    <?= $metrics['ape_clearance_rate'] ?>%
+                </p>
             </div>
         </a>
         <a href="<?= app_url('ape/index.php?queue=document_review') ?>"
@@ -278,10 +219,83 @@ render_header('Main Dashboard');
             <div class="min-w-0">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">APE To Review</p>
                 <p class="font-headline text-3xl font-extrabold text-slate-800 leading-none m-0">
-                    <?= $metrics['ape_pending_review'] ?></p>
+                    <?= $metrics['ape_pending_review'] ?>
+                </p>
             </div>
         </a>
     </div>
+
+    <!-- 1. Emergency & Alerts Banner -->
+    <?php if (count($activeAlerts) > 0): ?>
+        <section class="clinic-card overflow-hidden mb-8">
+            <div class="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[20px]">warning</span>
+                    </div>
+                    <div>
+                        <h2 class="font-headline text-base font-extrabold text-[#17261d] m-0 flex items-center gap-2">
+                            Active Emergency Alerts
+                            <span class="badge badge-high text-[10px]"><?= count($activeAlerts) ?></span>
+                        </h2>
+                        <p class="text-xs font-bold text-slate-500 m-0">Clinic response needed for
+                            <?= count($activeAlerts) ?> pending alert(s).
+                        </p>
+                    </div>
+                </div>
+                <a href="<?= app_url('alerts/index.php') ?>"
+                    class="btn btn-sm btn-ghost text-red-600 hover:text-red-700 text-decoration-none shrink-0">
+                    View All
+                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </a>
+            </div>
+
+            <div class="p-4 sm:p-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <?php foreach ($activeAlerts as $alert): ?>
+                        <div
+                            class="flex flex-col justify-between rounded-xl border border-slate-100 border-l-4 border-l-red-500 bg-white p-4 hover:shadow-sm transition-shadow">
+                            <div>
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="badge badge-pending text-[9px]">Pending</span>
+                                    <span class="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[13px]">schedule</span>
+                                        <?= date('h:i A', strtotime($alert['created_at'])) ?>
+                                    </span>
+                                </div>
+                                <h3 class="font-bold text-slate-800 text-sm mb-1"><?= e($alert['concern']) ?></h3>
+                                <p class="text-xs text-slate-500 line-clamp-2 mb-3"><?= e($alert['details']) ?></p>
+                            </div>
+                            <div class="flex items-center gap-1 text-xs font-bold text-slate-500 mb-3">
+                                <span class="material-symbols-outlined text-[14px] text-red-400">location_on</span>
+                                <?= e($alert['location']) ?>
+                            </div>
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <form method="post" action="<?= app_url('alerts/update.php') ?>" class="flex-1">
+                                    <input type="hidden" name="id" value="<?= (int) $alert['id'] ?>">
+                                    <input type="hidden" name="status" value="In Progress">
+                                    <input type="hidden" name="redirect" value="../dashboard.php">
+                                    <button type="submit" class="btn btn-sm btn-danger w-full" data-confirm-submit
+                                        data-confirm-type="danger" data-confirm-title="Acknowledge this alert?"
+                                        data-confirm-message="This will move the alert to In Progress so staff can handle it."
+                                        data-confirm-toast="Acknowledging alert...">
+                                        <span class="material-symbols-outlined text-[14px]">priority_high</span>
+                                        Acknowledge
+                                    </button>
+                                </form>
+                                <a href="<?= app_url('alerts/view.php?id=' . (int) $alert['id']) ?>" class="btn btn-sm btn-outline w-full flex-1 text-decoration-none">
+                                    <span class="material-symbols-outlined text-[14px]">assignment</span>
+                                    Open Report
+                                </a>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </section>
+    <?php endif; ?>
+
+
 
     <div class="dashboard-activity-grid grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8 items-stretch">
         <!-- 3. Appointment Requests and Today's Schedule -->
@@ -335,7 +349,10 @@ render_header('Main Dashboard');
                                             <input type="hidden" name="id" value="<?= (int) $request['id'] ?>">
                                             <input type="hidden" name="status" value="Scheduled">
                                             <input type="hidden" name="redirect" value="../dashboard.php">
-                                            <button class="btn btn-sm btn-primary w-full">
+                                            <button class="btn btn-sm btn-primary w-full" data-confirm-submit
+                                                data-confirm-type="primary" data-confirm-title="Approve this appointment?"
+                                                data-confirm-message="This will schedule the appointment request."
+                                                data-confirm-toast="Approving appointment...">
                                                 <span class="material-symbols-outlined text-[14px]">event_available</span>
                                                 Approve
                                             </button>
@@ -344,7 +361,10 @@ render_header('Main Dashboard');
                                             <input type="hidden" name="id" value="<?= (int) $request['id'] ?>">
                                             <input type="hidden" name="status" value="Cancelled">
                                             <input type="hidden" name="redirect" value="../dashboard.php">
-                                            <button class="btn btn-sm btn-ghost w-full">
+                                            <button class="btn btn-sm btn-ghost w-full" data-confirm-submit
+                                                data-confirm-type="danger" data-confirm-title="Cancel this appointment request?"
+                                                data-confirm-message="This will mark the appointment request as Cancelled."
+                                                data-confirm-toast="Cancelling appointment...">
                                                 <span class="material-symbols-outlined text-[14px]">cancel</span>
                                                 Cancel
                                             </button>
@@ -382,7 +402,8 @@ render_header('Main Dashboard');
                                     <div class="flex-1 min-w-0">
                                         <h4 class="font-bold text-slate-800 text-sm mb-0 truncate"><?= e($fullName) ?></h4>
                                         <p class="text-xs text-slate-500 mb-1 truncate"><?= e($apt['student_number']) ?> &bull;
-                                            <?= e($apt['purpose']) ?></p>
+                                            <?= e($apt['purpose']) ?>
+                                        </p>
                                         <span class="badge badge-in-progress text-[9px]"><?= e($apt['status']) ?></span>
                                     </div>
                                 </div>

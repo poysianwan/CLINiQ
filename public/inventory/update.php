@@ -1,12 +1,14 @@
 <?php
 
 require_once __DIR__ . '/../../app/helpers/view.php';
+require_once __DIR__ . '/../../app/services/InventoryWorkflow.php';
 require_login();
+ensure_inventory_workflow_schema();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
     $stmt = db()->prepare(
-        'UPDATE inventory_items SET item_name=?, category=?, quantity=?, unit=?, reorder_level=?, expiration_date=? WHERE id=?'
+        'UPDATE inventory_items SET item_name=?, category=?, quantity=?, unit=?, reorder_level=?, expiration_date=? WHERE id=? AND archived_at IS NULL'
     );
     $stmt->execute([
         trim($_POST['item_name'] ?? ''),

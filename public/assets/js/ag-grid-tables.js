@@ -15,12 +15,20 @@
         return params.value || '';
     }
 
-    function normalizeColumns(columns) {
+    function normalizeColumns(columns, shouldFitColumns) {
         return columns.map((column) => {
             const nextColumn = { ...column };
             if (nextColumn.cellRenderer === 'html') {
                 nextColumn.cellRenderer = htmlRenderer;
             }
+
+            if (shouldFitColumns) {
+                const basis = Number(nextColumn.flex || nextColumn.width || nextColumn.minWidth || 140);
+                nextColumn.flex = Math.max(0.7, Math.min(2.25, basis / 140));
+                nextColumn.minWidth = Math.min(Number(nextColumn.minWidth || 92), 140);
+                delete nextColumn.width;
+            }
+
             return nextColumn;
         });
     }
@@ -41,10 +49,10 @@
             return;
         }
 
-        const columnDefs = normalizeColumns(readGridJson(grid, '[data-grid-columns]', []));
         const rowData = readGridJson(grid, '[data-grid-rows]', []);
         const pageSize = Number(grid.dataset.pageSize || 25);
-        const shouldFitColumns = grid.dataset.fitColumns === 'true';
+        const shouldFitColumns = grid.dataset.fitColumns !== 'false';
+        const columnDefs = normalizeColumns(readGridJson(grid, '[data-grid-columns]', []), shouldFitColumns);
 
         function fitColumns(api) {
             if (shouldFitColumns && api && api.sizeColumnsToFit) {
@@ -59,7 +67,7 @@
                 sortable: true,
                 filter: true,
                 resizable: true,
-                minWidth: shouldFitColumns ? 88 : 130,
+                minWidth: shouldFitColumns ? 76 : 130,
                 flex: 1,
                 wrapHeaderText: true,
                 autoHeaderHeight: true

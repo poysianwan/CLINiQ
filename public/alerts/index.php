@@ -1,7 +1,9 @@
 ﻿<?php
 
 require_once __DIR__ . '/../../app/helpers/view.php';
+require_once __DIR__ . '/../../app/services/AlertWorkflow.php';
 require_login();
+ensure_alert_workflow_schema();
 
 $filterStatus = $_GET['status'] ?? 'all';
 
@@ -39,14 +41,17 @@ foreach ($alerts as $alert) {
     $actions = '';
     if ($alert['status'] === 'Pending') {
         $actions = '<div class="flex justify-end gap-2">'
-            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="In Progress"><button type="submit" class="btn btn-sm btn-outline" title="Acknowledge"><span class="material-symbols-outlined text-[14px]">play_arrow</span> Ack</button></form>'
-            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="Cancelled"><button type="submit" class="btn btn-sm btn-ghost" title="Cancel alert"><span class="material-symbols-outlined text-[14px]">cancel</span> Cancel</button></form>'
+            . '<a href="view.php?id=' . (int)$alert['id'] . '" class="btn btn-sm btn-ghost text-decoration-none"><span class="material-symbols-outlined text-[14px]">visibility</span> View</a>'
+            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="In Progress"><button type="submit" class="btn btn-sm btn-outline" title="Acknowledge" data-confirm-submit data-confirm-type="primary" data-confirm-title="Acknowledge this alert?" data-confirm-message="This will move the alert to In Progress so staff can handle it." data-confirm-toast="Acknowledging alert..."><span class="material-symbols-outlined text-[14px]">play_arrow</span> Ack</button></form>'
+            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="Cancelled"><button type="submit" class="btn btn-sm btn-ghost btn-cancel-icon" title="Cancel alert" aria-label="Cancel alert" data-confirm-submit data-confirm-type="danger" data-confirm-title="Cancel this alert?" data-confirm-message="This will mark the alert as Cancelled and remove it from the active queue." data-confirm-toast="Cancelling alert..."><span class="material-symbols-outlined text-[14px]">cancel</span></button></form>'
             . '</div>';
     } elseif ($alert['status'] === 'In Progress') {
         $actions = '<div class="flex justify-end gap-2">'
-            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="Resolved"><button type="submit" class="btn btn-sm btn-primary" title="Resolve"><span class="material-symbols-outlined text-[14px]">check</span> Resolve</button></form>'
-            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="Cancelled"><button type="submit" class="btn btn-sm btn-ghost" title="Cancel alert"><span class="material-symbols-outlined text-[14px]">cancel</span> Cancel</button></form>'
+            . '<a href="view.php?id=' . (int)$alert['id'] . '" class="btn btn-sm btn-primary text-decoration-none"><span class="material-symbols-outlined text-[14px]">assignment</span> Report</a>'
+            . '<form method="post" action="update.php"><input type="hidden" name="id" value="' . (int)$alert['id'] . '"><input type="hidden" name="status" value="Cancelled"><button type="submit" class="btn btn-sm btn-ghost btn-cancel-icon" title="Cancel alert" aria-label="Cancel alert" data-confirm-submit data-confirm-type="danger" data-confirm-title="Cancel this alert?" data-confirm-message="This will mark the alert as Cancelled and remove it from the active queue." data-confirm-toast="Cancelling alert..."><span class="material-symbols-outlined text-[14px]">cancel</span></button></form>'
             . '</div>';
+    } else {
+        $actions = '<div class="flex justify-end"><a href="view.php?id=' . (int)$alert['id'] . '" class="btn btn-sm btn-ghost text-decoration-none"><span class="material-symbols-outlined text-[14px]">visibility</span> View</a></div>';
     }
 
     $alertRows[] = [
@@ -54,7 +59,7 @@ foreach ($alerts as $alert) {
         'patient' => $patientName !== '' ? $patientName : 'Unlisted',
         'reporterHtml' => '<p class="text-sm font-bold text-slate-600 mb-0">' . e($alert['reporter_name']) . '</p>' . ($alert['reporter_role'] ? '<p class="text-xs font-bold text-slate-400 mb-0">' . e($alert['reporter_role']) . '</p>' : ''),
         'location' => $alert['location'],
-        'concernHtml' => '<p class="text-sm font-bold text-slate-800 mb-0">' . e($alert['concern']) . '</p>' . ($alert['details'] ? '<p class="text-xs font-bold text-slate-400 mt-0.5 mb-0 truncate">' . e($alert['details']) . '</p>' : ''),
+        'concernHtml' => '<a href="view.php?id=' . (int)$alert['id'] . '" class="block text-decoration-none"><p class="text-sm font-bold text-slate-800 mb-0">' . e($alert['concern']) . '</p>' . ($alert['details'] ? '<p class="text-xs font-bold text-slate-400 mt-0.5 mb-0 truncate">' . e($alert['details']) . '</p>' : '') . '</a>',
         'created' => date('M d, g:i A', strtotime($alert['created_at'])),
         'actionsHtml' => $actions,
     ];

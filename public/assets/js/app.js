@@ -270,6 +270,67 @@ function confirmAction(title, message, onConfirm, type = 'danger') {
     showModal('confirmActionModal');
 }
 
+function submitConfirmableAction(button) {
+    if (!button || button.disabled) return;
+
+    const formId = button.getAttribute('form');
+    const form = formId ? document.getElementById(formId) : button.form;
+    if (!form) return;
+
+    const title = button.dataset.confirmTitle || 'Confirm action?';
+    const message = button.dataset.confirmMessage || 'Please confirm before continuing.';
+    const type = button.dataset.confirmType || 'primary';
+    const toast = button.dataset.confirmToast || '';
+
+    confirmAction(title, message, () => {
+        if (toast) {
+            showToast(toast, 'info', 1200);
+        }
+
+        form.dataset.confirmed = '1';
+        try {
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit(button);
+            } else {
+                form.submit();
+            }
+        } catch (error) {
+            form.submit();
+        }
+        setTimeout(() => {
+            delete form.dataset.confirmed;
+        }, 0);
+    }, type);
+}
+
+document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-confirm-submit]');
+    if (!button) return;
+
+    event.preventDefault();
+    submitConfirmableAction(button);
+});
+
+document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!form.matches('[data-confirm-submit]') || form.dataset.confirmed === '1') return;
+
+    event.preventDefault();
+    const title = form.dataset.confirmTitle || 'Confirm action?';
+    const message = form.dataset.confirmMessage || 'Please confirm before continuing.';
+    const type = form.dataset.confirmType || 'primary';
+    const toast = form.dataset.confirmToast || '';
+
+    confirmAction(title, message, () => {
+        if (toast) {
+            showToast(toast, 'info', 1200);
+        }
+
+        form.dataset.confirmed = '1';
+        form.submit();
+    }, type);
+});
+
 
 // ============================================================
 // AVATAR HELPER

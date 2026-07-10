@@ -218,10 +218,12 @@ render_header('Add APE Record');
     </div>
 
     <div class="mt-8 flex flex-wrap gap-3">
-        <button class="btn btn-primary">
+        <button class="btn btn-primary" data-confirm-submit data-confirm-type="primary" data-confirm-title="Save this APE record?" data-confirm-message="This will create the APE record for the selected patient." data-confirm-toast="Saving APE record...">
             <span class="material-symbols-outlined text-[18px]">save</span> Save APE Record
         </button>
-        <a class="btn btn-ghost text-decoration-none" href="index.php">Cancel</a>
+        <a class="btn btn-ghost btn-cancel-icon text-decoration-none" href="index.php" title="Cancel" aria-label="Cancel">
+            <span class="material-symbols-outlined">cancel</span>
+        </a>
     </div>
 </form>
 <?php render_footer(); ?>
