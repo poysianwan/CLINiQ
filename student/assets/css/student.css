@@ -23,6 +23,15 @@
     box-sizing: border-box;
 }
 
+/* ── Reset overflow from app.css admin shell ────────────────────────────────
+   app.css sets html, body { height: 100%; overflow: hidden; } for the admin
+   sidebar layout. The student portal scrolls the whole page, so we undo it. */
+html:has(.student-body),
+html:has(.student-body) body {
+    height: auto !important;
+    overflow: visible !important;
+}
+
 .student-body {
     min-height: 100vh;
     margin: 0;
@@ -969,9 +978,9 @@
         grid-template-columns: auto 1fr;
     }
 
-    .student-document-card > .student-button,
-    .student-document-card > .student-button-secondary,
-    .student-progress-step > .student-badge {
+    .student-document-card>.student-button,
+    .student-document-card>.student-button-secondary,
+    .student-progress-step>.student-badge {
         grid-column: 1 / -1;
         width: 100%;
     }
@@ -979,4 +988,444 @@
     .student-time-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Emergency Health Passport — Passport Settings page
+   ══════════════════════════════════════════════════════════ */
+
+/* Emergency badge variants */
+.passport-badge-emergency {
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    min-height: 1.55rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.64rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.passport-badge-emergency-soft {
+    color: #92400e;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    min-height: 1.55rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.64rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+/* Read-only display field */
+.passport-readonly-field {
+    min-height: 2.8rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--student-border-soft);
+    border-radius: 0.72rem;
+    background: var(--student-muted-soft);
+    color: var(--student-fg);
+    font-size: var(--student-control-font-size);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+}
+
+/* "Editable" inline tag on label */
+.passport-editable-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    margin-left: 6px;
+}
+
+/* Dot indicators for field labels */
+.passport-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+.passport-dot-red {
+    background: #dc2626;
+}
+
+.passport-dot-amber {
+    background: #f59e0b;
+}
+
+.passport-dot-blue {
+    background: #00478d;
+}
+
+.passport-dot-green {
+    background: #10b981;
+}
+
+/* Hint text below inputs */
+.passport-hint {
+    margin-top: 0.3rem;
+    color: var(--student-muted);
+    font-size: 0.68rem;
+    font-weight: 500;
+}
+
+/* ── QR Container ── */
+.passport-qr-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.1rem;
+    border: 1px solid var(--student-border-soft);
+    border-radius: 1rem;
+    background: #f9fafb;
+    margin-bottom: 0.55rem;
+}
+
+.passport-qr-svg {
+    width: 140px;
+    height: 140px;
+}
+
+.passport-qr-label {
+    color: var(--student-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.passport-token-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    background: var(--student-muted-soft);
+    border: 1px solid var(--student-border-soft);
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--student-muted);
+}
+
+.passport-token-chip code {
+    font-family: ui-monospace, 'Cascadia Code', monospace;
+    font-size: 0.65rem;
+    color: var(--student-fg);
+}
+
+/* ── Passport Preview shell ── */
+.passport-preview {
+    overflow: hidden;
+}
+
+/* Preview header — mirrors passport-demo red gradient */
+.pv-head {
+    background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%);
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pv-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 2.5px solid rgba(255, 255, 255, 0.38);
+    background: rgba(255, 255, 255, 0.14);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.pv-avatar svg {
+    width: 26px;
+    height: 26px;
+}
+
+.pv-head-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.pv-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #fecaca;
+    margin-bottom: 4px;
+}
+
+.pv-name {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pv-meta {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.68);
+    margin-top: 2px;
+}
+
+.pv-blood {
+    flex-shrink: 0;
+    background: #fff;
+    border-radius: 10px;
+    padding: 7px 13px;
+    text-align: center;
+}
+
+.pv-blood-lbl {
+    font-size: 0.52rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #991b1b;
+}
+
+.pv-blood-val {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: #7f1d1d;
+    line-height: 1;
+}
+
+/* Preview body rows */
+.pv-body {
+    padding: 8px 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.pv-row {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--student-border-soft);
+}
+
+.pv-row:last-child {
+    border-bottom: none;
+}
+
+.pv-row-lbl {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--student-muted);
+    margin-bottom: 5px;
+}
+
+.pv-val {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--student-fg);
+    line-height: 1.55;
+}
+
+.pv-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.pv-tag {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-size: 0.71rem;
+    font-weight: 600;
+    color: #991b1b;
+}
+
+.pv-instr {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 3px solid #f59e0b;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #92400e;
+    line-height: 1.6;
+}
+
+/* Preview contact strip */
+.pv-contact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: #f9fafb;
+    border-top: 1px solid var(--student-border-soft);
+}
+
+.pv-contact-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #dbeafe;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #00478d;
+}
+
+.pv-contact-icon svg {
+    width: 17px;
+    height: 17px;
+}
+
+.pv-contact-name {
+    font-weight: 700;
+    font-size: 0.82rem;
+}
+
+.pv-contact-tel {
+    font-size: 0.72rem;
+    color: var(--student-muted);
+    margin-top: 2px;
+}
+
+.pv-call {
+    margin-left: auto;
+    flex-shrink: 0;
+    background: #10b981;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.15s;
+    cursor: pointer;
+}
+.pv-call:hover { background: #059669; color: #fff; }
+
+.pv-updated {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 0.67rem;
+    color: var(--student-muted);
+    border-top: 1px solid var(--student-border-soft);
+}
+
+/* Danger note variant */
+.student-note-danger {
+    color: #991b1b;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+}
+
+/* ── Incident Response & Guidance Preview ────────────────── */
+.pv-section-title {
+    font-size: 0.85rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--student-muted); margin: 18px 0 10px;
+    display: flex; align-items: center; gap: 8px;
+}
+.pv-section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--student-border-soft);
+}
+
+.pv-guidance-card {
+    padding: 14px; margin-bottom: 12px;
+    border: 1px solid var(--student-border-soft);
+    border-radius: var(--student-radius-md);
+}
+.pv-guidance-head {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.pv-guidance-icon { font-size: 1.15rem; }
+.pv-guidance-title { font-weight: 800; font-size: 0.9rem; color: var(--student-ink); }
+.pv-guidance-list { margin: 0; padding-left: 28px; font-size: 0.8rem; color: var(--student-ink); line-height: 1.6; }
+
+.pv-guidance-asthma { background: #e0f2fe; border-color: #bae6fd; }
+.pv-guidance-allergy { background: #fef3c7; border-color: #fde68a; }
+.pv-guidance-unconscious { background: #f3e8ff; border-color: #e9d5ff; }
+
+.pv-form-group {
+    margin-bottom: 14px;
+}
+.pv-label {
+    display: block; font-size: 0.75rem; font-weight: 700; color: var(--student-ink); margin-bottom: 6px;
+}
+.pv-textarea {
+    width: 100%; border: 1px solid var(--student-border-soft); border-radius: var(--student-radius-md);
+    padding: 12px; font-family: inherit; font-size: 0.85rem; color: var(--student-ink);
+    resize: vertical; min-height: 80px; background: var(--student-surface);
+}
+
+.pv-file-dropzone {
+    border: 2px dashed #cbd5e1; border-radius: var(--student-radius-md);
+    padding: 24px 16px; text-align: center; background: var(--student-surface);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.pv-dropzone-icon { color: var(--student-muted); margin-bottom: 8px; }
+.pv-dropzone-icon svg { width: 28px; height: 28px; }
+.pv-dropzone-text { font-size: 0.85rem; font-weight: 700; color: var(--student-ink); }
+.pv-dropzone-sub { font-size: 0.7rem; color: var(--student-muted); margin-top: 4px; }
+
+.pv-btn-primary {
+    width: 100%; background: #dc2626; color: #fff;
+    border: none; border-radius: var(--student-radius-md); padding: 14px;
+    text-align: center; margin-top: 6px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+
+.pv-status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #ecfdf5; border: 1px solid #6ee7b7;
+    color: #065f46; padding: 4px 10px; border-radius: 100px;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
 }

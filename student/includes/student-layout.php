@@ -25,6 +25,11 @@ function student_nav_items(): array
             'url' => 'student-appointment.php',
             'icon' => 'event_available',
         ],
+        'passport' => [
+            'label' => 'Health Passport',
+            'url' => 'student-passport.php',
+            'icon' => 'id_card',
+        ],
     ];
 }
 
