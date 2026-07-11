@@ -27,6 +27,7 @@ $appointmentBadgeClass = match ($appointmentStatus) {
 };
 
 $profile = student_demo_profile();
+$passportComplete = false;
 
 render_student_header('Dashboard', 'dashboard');
 ?>
@@ -43,24 +44,58 @@ render_student_header('Dashboard', 'dashboard');
     </span>
 </section>
 
-<section class="student-action-card mb-4">
-    <div class="flex items-start gap-4">
-        <span class="student-icon-box">
-            <span class="material-symbols-outlined">upload_file</span>
-        </span>
+<section class="student-required-actions mb-4" aria-label="Required student actions">
+    <div class="student-required-actions-head">
         <div>
-            <h2>Next action: Upload missing APE documents</h2>
-            <p>Submit your UHS Medical Record, UHS Dental Record, and Referral Form so the clinic can continue review.</p>
+            <p class="student-eyebrow" style="margin-bottom:0.28rem;">Required Actions</p>
+            <h2>Complete these to keep your clinic profile ready</h2>
         </div>
+        <span class="student-badge student-badge-warning">2 Pending</span>
     </div>
-    <a href="student-ape-status.php" class="student-button text-decoration-none">
-        Continue APE
-        <span class="material-symbols-outlined">arrow_forward</span>
-    </a>
+
+    <div class="student-required-action-list">
+        <?php if (!$passportComplete): ?>
+            <article class="student-action-card student-action-card-danger" role="alert" aria-live="polite">
+                <div class="flex items-start gap-4">
+                    <span class="student-action-step student-action-step-danger">1</span>
+                    <span class="student-icon-box student-icon-box-danger">
+                        <span class="material-symbols-outlined">emergency</span>
+                    </span>
+                    <div>
+                        <p class="student-action-kicker">Urgent profile action</p>
+                        <h2>Complete your Emergency Health Passport</h2>
+                        <p>Add allergies, blood type, guardian contact, and emergency instructions before an incident happens.</p>
+                    </div>
+                </div>
+                <a href="student-passport.php" class="student-button-danger text-decoration-none">
+                    Complete Passport
+                    <span class="material-symbols-outlined">arrow_forward</span>
+                </a>
+            </article>
+        <?php endif; ?>
+
+        <article class="student-action-card">
+            <div class="flex items-start gap-4">
+                <span class="student-action-step">2</span>
+                <span class="student-icon-box">
+                    <span class="material-symbols-outlined">upload_file</span>
+                </span>
+                <div>
+                    <p class="student-action-kicker student-action-kicker-primary">APE requirement</p>
+                    <h2>Upload missing APE documents</h2>
+                    <p>Submit your UHS Medical Record, UHS Dental Record, and Referral Form so the clinic can continue review.</p>
+                </div>
+            </div>
+            <a href="student-ape-status.php" class="student-button text-decoration-none">
+                Continue APE
+                <span class="material-symbols-outlined">arrow_forward</span>
+            </a>
+        </article>
+    </div>
 </section>
 
 <div class="student-grid">
-    <section class="student-card student-card-pad student-span-4">
+    <section class="student-card student-card-pad student-span-4 student-clickable-card" data-href="student-passport.php" role="link" tabindex="0" aria-label="Open Health Passport profile">
         <div class="flex items-center gap-3 mb-5">
             <span class="student-icon-box">
                 <span class="material-symbols-outlined">badge</span>
@@ -91,7 +126,7 @@ render_student_header('Dashboard', 'dashboard');
         </div>
     </section>
 
-    <section class="student-card student-span-4">
+    <section class="student-card student-span-4 student-clickable-card" data-href="student-ape-status.php" role="link" tabindex="0" aria-label="Open APE status">
         <div class="student-card-header">
             <div>
                 <h2 class="student-card-title">APE Progress</h2>
@@ -128,7 +163,7 @@ render_student_header('Dashboard', 'dashboard');
         </div>
     </section>
 
-    <section class="student-card student-span-4">
+    <section class="student-card student-span-4 student-clickable-card" data-href="student-appointment.php" role="link" tabindex="0" aria-label="Open appointment page">
         <div class="student-card-header">
             <div>
                 <h2 class="student-card-title">Appointment</h2>
@@ -192,3 +227,27 @@ render_student_header('Dashboard', 'dashboard');
 </section>
 
 <?php render_student_footer(); ?>
+
+<script>
+(function () {
+    document.querySelectorAll('[data-href].student-clickable-card').forEach((card) => {
+        const navigate = () => {
+            window.location.href = card.dataset.href;
+        };
+
+        card.addEventListener('click', (event) => {
+            if (event.target.closest('a, button, input, select, textarea, label')) {
+                return;
+            }
+            navigate();
+        });
+
+        card.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                navigate();
+            }
+        });
+    });
+})();
+</script>

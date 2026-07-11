@@ -263,7 +263,7 @@ render_student_header('Emergency Health Passport', 'passport');
                 <span class="material-symbols-outlined">save</span>
                 Save Passport Settings
             </button>
-            <a href="passport-demo.html" target="_blank" class="student-button-secondary text-decoration-none" style="white-space:nowrap;">
+            <a href="passport-demo.php" target="_blank" class="student-button-secondary text-decoration-none" style="white-space:nowrap;">
                 <span class="material-symbols-outlined">open_in_new</span>
                 View Live Passport
             </a>
@@ -353,7 +353,7 @@ render_student_header('Emergency Health Passport', 'passport');
                 </span>
             </div>
 
-            <!-- Preview shell mimicking passport-demo.html style -->
+            <!-- Preview shell mimicking the live passport style -->
             <div class="passport-preview">
 
                 <!-- Preview header -->
