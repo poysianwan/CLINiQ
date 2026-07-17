@@ -194,7 +194,7 @@ function render_student_header(string $title, string $active = ''): void
             };
         </script>
         <link href="../public/assets/css/app.css?v=cancel-icon-1" rel="stylesheet">
-        <link href="assets/css/student.css?v=ape-flow-icons-1" rel="stylesheet">
+        <link href="assets/css/student.css?v=passport-mobile-1" rel="stylesheet">
     </head>
     <body class="student-body">
         <div class="student-shell">
@@ -279,7 +279,7 @@ function render_student_auth_header(string $title): void
             };
         </script>
         <link href="../public/assets/css/app.css?v=cancel-icon-1" rel="stylesheet">
-        <link href="assets/css/student.css?v=ape-flow-icons-1" rel="stylesheet">
+        <link href="assets/css/student.css?v=passport-mobile-1" rel="stylesheet">
     </head>
     <body class="student-body student-auth-page">
     <?php
