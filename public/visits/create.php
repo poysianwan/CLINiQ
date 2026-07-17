@@ -131,101 +131,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 set_page_back_link('index.php', 'Visits');
 render_header('Record Visit');
-?>
-<style>
-    .record-sheet-field {
-        width: 100%;
-        border: 1px solid rgba(148, 163, 184, 0.22);
-        border-radius: 0.625rem;
-        background: #f8fafc;
-        color: #0f172a;
-        font-size: 0.8125rem;
-        font-weight: 700;
-        line-height: 1.35;
-        height: 3.625rem;
-        min-height: 3.625rem;
-        padding: 0.75rem 1rem;
-        box-sizing: border-box;
-    }
-    textarea.record-sheet-field {
-        min-height: 7rem;
-        height: auto;
-    }
-    .vitals-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 1rem;
-    }
-    .vital-tile {
-        min-height: 6.25rem;
-        border: 1px solid rgba(148, 163, 184, 0.18);
-        border-radius: 0.875rem;
-        background: #f8fafc;
-        padding: 1rem;
-    }
-    .vital-label {
-        display: flex;
-        align-items: center;
-        gap: 0.35rem;
-        color: #94a3b8;
-        font-size: 0.68rem;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        margin-bottom: 0.75rem;
-    }
-    .vital-label .material-symbols-outlined {
-        font-size: 1rem;
-    }
-    .vital-value-wrap {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    .vital-input {
-        width: 100%;
-        height: 2.375rem;
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        border-radius: 0.5rem;
-        background: #fff;
-        padding: 0 0.75rem;
-        font-size: 0.8125rem;
-        font-weight: 800;
-        color: #0f172a;
-    }
-    .vital-unit {
-        color: #94a3b8;
-        font-size: 0.68rem;
-        font-weight: 800;
-    }
-    @media (max-width: 900px) {
-        .vitals-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 640px) {
-        .vitals-grid { grid-template-columns: 1fr; }
-    }
-    .patient-lookup-status {
-        min-height: 1.1rem;
-        color: #64748b;
-        font-size: 0.72rem;
-        font-weight: 800;
-    }
-    .patient-lookup-status.is-found {
-        color: #15803d;
-    }
-    .patient-lookup-status.is-missing {
-        color: #b91c1c;
-    }
-</style>
 
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6">
-    <div>
-        <p class="clinic-label mb-1">Manual Nurse Station Flow</p>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Manual Record Visit</h1>
-        <p class="text-sm font-bold text-slate-500 mt-1">Record a walk-in visit directly with vitals, treatment, dispensing, and clinical notes.</p>
-    </div>
-</div>
+render_clinic_command_header(
+    'Manual Nurse Station Flow',
+    'Manual Record Visit',
+    'Record a walk-in visit directly with vitals, treatment, dispensing, and clinical notes.'
+);
+?>
 
 <form method="post" id="visitForm" class="space-y-6">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

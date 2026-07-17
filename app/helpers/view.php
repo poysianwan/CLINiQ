@@ -54,6 +54,26 @@ function set_page_back_link(string $url, string $label = 'Back'): void
     ];
 }
 
+function render_clinic_command_header(string $eyebrow, string $heading, string $subheading = '', string $actionsHtml = ''): void
+{
+    ?>
+    <div class="dashboard-hero flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-8">
+        <div>
+            <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2"><?= e($eyebrow) ?></p>
+            <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]"><?= e($heading) ?></h1>
+            <?php if ($subheading !== ''): ?>
+                <p class="text-sm font-bold text-slate-500 mt-1"><?= e($subheading) ?></p>
+            <?php endif; ?>
+        </div>
+        <?php if ($actionsHtml !== ''): ?>
+            <div class="flex items-center gap-3">
+                <?= $actionsHtml ?>
+            </div>
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
 /**
  * Get the CSS class for a risk level badge.
  */
@@ -158,7 +178,7 @@ function render_header(string $title): void
         <link rel="stylesheet" href="<?= app_url('assets/vendor/ag-grid/ag-grid.css?v=31') ?>">
         <link rel="stylesheet" href="<?= app_url('assets/vendor/ag-grid/ag-theme-quartz.css?v=31') ?>">
         <script src="<?= app_url('assets/vendor/ag-grid/ag-grid-community.min.js?v=31') ?>"></script>
-        <link href="<?= app_url('assets/css/app.css?v=user-menu-2') ?>" rel="stylesheet">
+        <link href="<?= app_url('assets/css/app.css?v=dashboard-hero-3') ?>" rel="stylesheet">
     </head>
     <body class="bg-surface font-body text-on-surface min-h-screen overflow-x-hidden">
     <?php if ($user): ?>

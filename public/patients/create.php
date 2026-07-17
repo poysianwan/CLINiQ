@@ -41,12 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 set_page_back_link('index.php', 'Patients');
 render_header('Add Patient');
 ?>
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-    <div>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Add Patient</h1>
-        <p class="text-sm font-bold text-slate-500 mt-1">Create a patient profile and QR/NFC emergency tag reference.</p>
-    </div>
-</div>
+<?php render_clinic_command_header(
+    'Patient Registry',
+    'Add Patient',
+    'Create a patient profile and QR/NFC emergency tag reference.'
+); ?>
 
 <form class="clinic-card p-6 md:p-8" method="post">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">

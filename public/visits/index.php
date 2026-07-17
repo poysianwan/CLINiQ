@@ -212,21 +212,14 @@ foreach ($visits as $visit) {
 }
 
 render_header('Clinic Visits');
-?>
 
-<div class="dashboard-hero flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-8">
-    <div>
-        <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2">Clinic Logbook</p>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Visits</h1>
-        <p class="text-sm font-bold text-slate-500 mt-1">Review clinic visits, open treatment records, and log emergency cases.</p>
-    </div>
-    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-        <a class="btn btn-primary text-decoration-none justify-center" href="<?= app_url('visits/create.php') ?>">
-            <span class="material-symbols-outlined text-[20px]">add_notes</span>
-            Manual Record Visit
-        </a>
-    </div>
-</div>
+render_clinic_command_header(
+    'Clinic Logbook',
+    'Visits',
+    'Review clinic visits, open treatment records, and log emergency cases.',
+    '<a class="btn btn-primary text-decoration-none justify-center" href="' . e(app_url('visits/create.php')) . '"><span class="material-symbols-outlined text-[20px]">add_notes</span>Manual Record Visit</a>'
+);
+?>
 
 <section class="bg-white rounded-[2rem] border border-outline-variant/20 shadow-sm overflow-hidden">
     <form id="visitFilterForm" method="get">

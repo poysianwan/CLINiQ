@@ -148,13 +148,11 @@ set_page_back_link('index.php', 'Logbook');
 render_header('Emergency Visit');
 ?>
 
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-    <div>
-        <p class="clinic-label">Nurse Emergency Flow</p>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Record Emergency Visit</h1>
-        <p class="text-sm font-bold text-slate-500 mt-1">Use this when the patient cannot complete the public logbook process.</p>
-    </div>
-</div>
+<?php render_clinic_command_header(
+    'Nurse Emergency Flow',
+    'Record Emergency Visit',
+    'Use this when the patient cannot complete the public logbook process.'
+); ?>
 
 <section class="clinic-card p-6 md:p-8">
     <form method="get" class="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto] gap-3 mb-6 pb-6 border-b border-slate-100">

@@ -60,16 +60,12 @@ render_header('Reports');
 ?>
 
 <!-- ═══ Title ═══ -->
-<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-    <div>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#1c2a59]">Reports & Analytics</h1>
-        <p class="text-sm font-bold text-slate-500 mt-1">Clinic summaries, visit trends, alerts, and inventory warnings.</p>
-    </div>
-    <a class="btn btn-primary text-decoration-none" href="export.php?from=<?= e($dateFrom) ?>&to=<?= e($dateTo) ?>">
-        <span class="material-symbols-outlined text-[20px]">download</span>
-        Export CSV
-    </a>
-</div>
+<?php render_clinic_command_header(
+    'Reports',
+    'Reports & Analytics',
+    'Clinic summaries, visit trends, alerts, and inventory warnings.',
+    '<a class="btn btn-primary text-decoration-none" href="export.php?from=' . e($dateFrom) . '&to=' . e($dateTo) . '"><span class="material-symbols-outlined text-[20px]">download</span>Export CSV</a>'
+); ?>
 
 <!-- ═══ Date Range Filter ═══ -->
 <form method="get" class="clinic-card p-4 flex flex-col sm:flex-row items-end gap-4">

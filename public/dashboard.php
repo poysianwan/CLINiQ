@@ -147,16 +147,11 @@ render_header('Main Dashboard');
 
 <div class="dashboard-page">
 
-    <div class="dashboard-hero flex flex-col lg:flex-row lg:items-center justify-between gap-5 mb-8">
-        <div>
-            <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2">Clinic Command Center</p>
-            <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Good day,
-                <?= e($dashboardDisplayName) ?>
-            </h1>
-            <p class="text-sm font-bold text-slate-500 mt-1">Real-time alerts, daily schedule, and active patient logs.
-            </p>
-        </div>
-    </div>
+    <?php render_clinic_command_header(
+        'Clinic Command Center',
+        'Good day, ' . $dashboardDisplayName,
+        'Real-time alerts, daily schedule, and active patient logs.'
+    ); ?>
 
     <!-- 2. Analytics & Metrics Ribbon -->
     <div class="dashboard-metrics grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">

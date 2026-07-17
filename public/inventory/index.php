@@ -293,42 +293,14 @@ if (count($activeLoans) > 0) {
 }
 
 render_header('Inventory');
+
+render_clinic_command_header(
+    'Medicines',
+    'Inventory & Tracking',
+    'Manage clinic medicines, expiring stock, equipment loans, and archived records.',
+    '<button onclick="openAddMedicineModal()" class="btn btn-primary justify-center"><span class="material-symbols-outlined text-[20px]">medication</span>+ Medicine</button><button onclick="showModal(\'addEquipmentModal\')" class="btn btn-outline justify-center"><span class="material-symbols-outlined text-[20px]">medical_services</span>+ Equipment</button>'
+);
 ?>
-<style>
-    @keyframes inventory-row-blink {
-        0%, 100% {
-            background-color: transparent;
-        }
-        35% {
-            background-color: rgba(16, 185, 129, 0.16);
-        }
-        70% {
-            background-color: rgba(245, 158, 11, 0.18);
-        }
-    }
-
-    .cliniq-ag-grid .ag-row.inventory-row-attention .ag-cell {
-        animation: inventory-row-blink 0.5s ease-in-out 0s 4;
-    }
-</style>
-
-<div class="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 mb-8">
-    <div>
-        <p class="text-[11px] font-black text-primary uppercase tracking-widest mb-2">Medicines</p>
-        <h1 class="font-headline text-3xl md:text-4xl font-extrabold text-[#17261d]">Inventory & Tracking</h1>
-        <p class="text-sm font-bold text-slate-500 mt-1">Manage clinic medicines, expiring stock, equipment loans, and archived records.</p>
-    </div>
-    <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-        <button onclick="openAddMedicineModal()" class="btn btn-primary justify-center">
-            <span class="material-symbols-outlined text-[20px]">medication</span>
-            + Medicine
-        </button>
-        <button onclick="showModal('addEquipmentModal')" class="btn btn-outline justify-center">
-            <span class="material-symbols-outlined text-[20px]">medical_services</span>
-            + Equipment
-        </button>
-    </div>
-</div>
 
 <div id="inventoryLiveRegion" data-inventory-live-region>
 <?php if (!empty($inventoryNotices)): ?>
