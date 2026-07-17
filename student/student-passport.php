@@ -288,7 +288,7 @@ render_student_header('Emergency Health Passport', 'passport');
     </div>
 
     <!-- ── Right column: QR/NFC Preview ── -->
-    <div class="student-span-5 grid gap-4">
+    <div class="student-span-5 grid gap-4 passport-side-rail">
 
         <!-- QR Code card -->
         <section class="student-card">
@@ -357,7 +357,7 @@ render_student_header('Emergency Health Passport', 'passport');
         </section>
 
         <!-- Live Passport Preview -->
-        <section class="student-card" id="passport-preview-card">
+        <section class="student-card passport-sticky-preview" id="passport-preview-card">
             <div class="student-card-header">
                 <div>
                     <h2 class="student-card-title">Passport Preview</h2>
@@ -457,9 +457,24 @@ render_student_header('Emergency Health Passport', 'passport');
                     </a>
                 </div>
 
-                <!-- ── Emergency Guidance ── -->
-                <div class="pv-section-title">What To Do In Case of Emergency</div>
+                <div class="pv-updated">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    Last updated: <strong><?= student_e($passport['last_updated']) ?></strong>
+                </div>
+            </div><!-- /passport-preview -->
+        </section>
 
+        <details class="student-card passport-accordion">
+            <summary>
+                <span>
+                    <span class="material-symbols-outlined">medical_services</span>
+                    Emergency Guidance
+                </span>
+                <span class="material-symbols-outlined passport-accordion-caret">expand_more</span>
+            </summary>
+            <div class="passport-accordion-body">
                 <div class="pv-card pv-guidance-card pv-guidance-asthma">
                     <div class="pv-guidance-head">
                         <span class="pv-guidance-icon">&#129505;</span>
@@ -495,11 +510,19 @@ render_student_header('Emergency Health Passport', 'passport');
                         <li>Contact guardian</li>
                     </ul>
                 </div>
+            </div>
+        </details>
 
-                <!-- ── Incident Response Actions ── -->
-                <div class="pv-section-title">&#128680; Incident Response</div>
-                
-                <div class="pv-card" style="padding: 16px;">
+        <details class="student-card passport-accordion">
+            <summary>
+                <span>
+                    <span class="material-symbols-outlined">emergency_share</span>
+                    Incident Response
+                </span>
+                <span class="material-symbols-outlined passport-accordion-caret">expand_more</span>
+            </summary>
+            <div class="passport-accordion-body">
+                <div class="pv-card passport-incident-card">
                     <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 14px; margin-top: -4px;">
                         Document the incident and notify the clinic.
                     </p>
@@ -537,15 +560,8 @@ render_student_header('Emergency Health Passport', 'passport');
                         </div>
                     </button>
                 </div>
-
-                <div class="pv-updated">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;flex-shrink:0;" aria-hidden="true">
-                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                    Last updated: <strong><?= student_e($passport['last_updated']) ?></strong>
-                </div>
-            </div><!-- /passport-preview -->
-        </section>
+            </div>
+        </details>
 
     </div><!-- /right column -->
 
