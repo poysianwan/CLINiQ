@@ -14,6 +14,15 @@ if (!$patient) {
     exit;
 }
 
+$programOptions = dropdown_options('student_program');
+$sectionOptions = dropdown_options('student_section');
+$currentProgram = trim((string) ($patient['course_section'] ?? ''));
+$currentSection = '';
+if (preg_match('/^(.+)\s+([A-E])$/i', $currentProgram, $matches)) {
+    $currentProgram = trim($matches[1]);
+    $currentSection = strtoupper($matches[2]);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $studentNumber = trim($_POST['student_number'] ?? '');
     if (!is_valid_student_id($studentNumber)) {
@@ -21,6 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: edit.php?id=' . $id);
         exit;
     }
+
+    $program = trim((string) ($_POST['student_program'] ?? ''));
+    $section = strtoupper(trim((string) ($_POST['student_section'] ?? '')));
+    $courseSection = trim(implode(' ', array_filter([$program, $section])));
 
     $stmt = db()->prepare(
         'UPDATE patients SET student_number=?, first_name=?, middle_name=?, last_name=?, birthdate=?, sex=?, course_section=?, blood_type=?, allergies=?, existing_conditions=?, emergency_instructions=?, guardian_name=?, guardian_contact=? WHERE id=?'
@@ -32,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         trim($_POST['last_name'] ?? ''),
         $_POST['birthdate'] ?: null,
         $_POST['sex'] ?: null,
-        trim($_POST['course_section'] ?? ''),
+        $courseSection,
         trim($_POST['blood_type'] ?? ''),
         trim($_POST['allergies'] ?? ''),
         trim($_POST['existing_conditions'] ?? ''),
@@ -88,8 +101,22 @@ render_header('Edit Patient');
             </select>
         </div>
         <div>
-            <label class="clinic-label">Course/Section</label>
-            <input class="clinic-input" name="course_section" value="<?= e($patient['course_section']) ?>">
+            <label class="clinic-label">Program</label>
+            <select class="clinic-select" name="student_program">
+                <option value="">Select program</option>
+                <?php foreach ($programOptions as $program): ?>
+                    <option value="<?= e($program) ?>" <?= $currentProgram === $program ? 'selected' : '' ?>><?= e($program) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div>
+            <label class="clinic-label">Section</label>
+            <select class="clinic-select" name="student_section">
+                <option value="">Select section</option>
+                <?php foreach ($sectionOptions as $section): ?>
+                    <option value="<?= e($section) ?>" <?= $currentSection === strtoupper($section) ? 'selected' : '' ?>><?= e($section) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
         <div>
             <label class="clinic-label">Blood Type</label>

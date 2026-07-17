@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../app/config/database.php';
 require_once __DIR__ . '/../../app/helpers/brand.php';
 require_once __DIR__ . '/../../app/helpers/student_id.php';
+require_once __DIR__ . '/../../app/services/SystemSettings.php';
 
 const STUDENT_DEMO_PASSWORD = 'student123';
 
@@ -156,6 +157,7 @@ function student_password_is_valid(array $patient, string $password): bool
 function render_student_header(string $title, string $active = ''): void
 {
     $profile = student_require_login();
+    $clinicProfile = clinic_profile_settings();
     $navItems = student_nav_items();
     ?>
     <!DOCTYPE html>
@@ -163,7 +165,7 @@ function render_student_header(string $title, string $active = ''): void
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><?= student_e($title) ?> | CLINiQ Student Portal</title>
+        <title><?= student_e($title) ?> | <?= student_e($clinicProfile['system_name']) ?> Student Portal</title>
         <link href="../public/assets/vendor/fonts/inter-manrope.css?v=offline-1" rel="stylesheet">
         <link href="../public/assets/vendor/fonts/material-symbols.css?v=offline-1" rel="stylesheet">
         <script src="../public/assets/vendor/tailwind/tailwind-cdn.js?v=offline-1"></script>
@@ -199,10 +201,10 @@ function render_student_header(string $title, string $active = ''): void
             <header class="student-topbar">
                 <a href="student-dashboard.php" class="student-brand text-decoration-none">
                     <span class="student-brand-mark">
-                        <img src="../public/assets/img/clinic-logo.png" alt="PLP Health Services Department logo">
+                        <img src="../public/assets/img/clinic-logo.png" alt="<?= student_e($clinicProfile['department']) ?> logo">
                     </span>
                     <span class="student-brand-copy">
-                        <span class="student-brand-title">CLINiQ</span>
+                        <span class="student-brand-title"><?= student_e($clinicProfile['system_name']) ?></span>
                         <span class="student-brand-subtitle">Student Health Portal</span>
                     </span>
                 </a>
@@ -243,13 +245,14 @@ function render_student_footer(): void
 
 function render_student_auth_header(string $title): void
 {
+    $clinicProfile = clinic_profile_settings();
     ?>
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title><?= student_e($title) ?> | CLINiQ Student Portal</title>
+        <title><?= student_e($title) ?> | <?= student_e($clinicProfile['system_name']) ?> Student Portal</title>
         <link href="../public/assets/vendor/fonts/inter-manrope.css?v=offline-1" rel="stylesheet">
         <link href="../public/assets/vendor/fonts/material-symbols.css?v=offline-1" rel="stylesheet">
         <script src="../public/assets/vendor/tailwind/tailwind-cdn.js?v=offline-1"></script>

@@ -24,13 +24,22 @@ $metrics['ape_clearance_rate'] = $apeTotal > 0 ? round(($apeCleared / $apeTotal)
 $metrics['ape_pending_review'] = (int) (db()->query("SELECT COUNT(*) AS total FROM ape_records WHERE COALESCE(requirement_status, '') <> 'Pre-Verified'")->fetch()['total'] ?? 0);
 
 
-// --- 2. Live Alerts (Emergency & High Priority) ---
+// --- 2. Live Alerts (Most Urgent First) ---
 $activeAlerts = db()->query("
     SELECT a.*, p.first_name, p.last_name
     FROM nurse_alerts a
     LEFT JOIN patients p ON p.id = a.patient_id
     WHERE a.status = 'Pending'
-    ORDER BY a.created_at DESC
+    ORDER BY
+        CASE COALESCE(a.risk_level, 'Low')
+            WHEN 'Critical' THEN 4
+            WHEN 'High' THEN 3
+            WHEN 'Moderate' THEN 2
+            ELSE 1
+        END DESC,
+        COALESCE(a.risk_score, 0) DESC,
+        a.created_at DESC,
+        a.id DESC
     LIMIT 2
 ")->fetchAll();
 
@@ -228,14 +237,14 @@ render_header('Main Dashboard');
                     <div>
                         <h2 class="font-headline text-base font-extrabold text-[#17261d] m-0 flex items-center gap-2">
                             Active Emergency Alerts
-                            <span class="badge badge-high text-[10px]"><?= count($activeAlerts) ?></span>
+                            <span class="badge badge-high text-[10px]"><?= $metrics['pending_alerts'] > 99 ? '99+' : $metrics['pending_alerts'] ?></span>
                         </h2>
-                        <p class="text-xs font-bold text-slate-500 m-0">Clinic response needed for
-                            <?= count($activeAlerts) ?> pending alert(s).
+                        <p class="text-xs font-bold text-slate-500 m-0">
+                            Showing the most urgent <?= count($activeAlerts) ?> of <?= $metrics['pending_alerts'] ?> pending alert(s).
                         </p>
                     </div>
                 </div>
-                <a href="<?= app_url('alerts/index.php') ?>"
+                <a href="<?= app_url('alerts/index.php?status=pending') ?>"
                     class="btn btn-sm btn-ghost text-red-600 hover:text-red-700 text-decoration-none shrink-0">
                     View All
                     <span class="material-symbols-outlined text-[16px]">arrow_forward</span>

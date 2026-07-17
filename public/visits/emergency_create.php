@@ -1,17 +1,16 @@
 <?php
 
 require_once __DIR__ . '/../../app/helpers/view.php';
-require_once __DIR__ . '/../../app/services/RiskClassifier.php';
 require_once __DIR__ . '/../../app/services/VisitWorkflow.php';
 require_login();
 ensure_visit_workflow_schema();
 
 $user = current_user();
-if (!in_array($user['role'] ?? '', ['admin', 'nurse'], true)) {
+if (!in_array($user['role'] ?? '', ['admin', 'doctor', 'nurse'], true)) {
     render_header('Emergency Visit');
     ?>
     <div class="rounded-2xl bg-red-50 border border-red-100 text-red-700 px-5 py-4 font-bold">
-        Emergency visit logging is available to nurses and administrators only.
+        Emergency visit logging is available to doctors, nurses, and administrators only.
     </div>
     <?php
     render_footer();
@@ -83,8 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $risk = classify_patient_risk($_POST);
-    $riskReasons = risk_reasons_text($risk);
     $management = trim($_POST['management_treatment'] ?? '');
     $referralType = trim($_POST['referral_type'] ?? '');
     if ($referralType === 'None') {
@@ -92,8 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $visitStmt = db()->prepare(
-        'INSERT INTO clinic_visits (patient_id, visit_datetime, chief_complaint, symptoms, temperature, blood_pressure, pulse_rate, risk_level, risk_score, risk_reasons, status, visit_purpose, visit_source, action_taken, recorded_by, attended_by)
-         VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO clinic_visits (patient_id, visit_datetime, chief_complaint, symptoms, temperature, blood_pressure, pulse_rate, status, visit_purpose, visit_source, action_taken, recorded_by, attended_by)
+         VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     $visitStmt->execute([
         $patientId,
@@ -102,9 +99,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_POST['temperature'] ?: null,
         trim($_POST['blood_pressure'] ?? ''),
         $_POST['pulse_rate'] ?: null,
-        $risk['level'],
-        $risk['score'],
-        $riskReasons,
         normalize_visit_status($_POST['status'] ?? 'Active', 'Active'),
         'Emergency',
         'Nurse Emergency',
@@ -113,7 +107,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user['id'],
     ]);
     $visitId = (int) db()->lastInsertId();
-    escalate_major_risk_visit(db(), $visitId, $patientId, $risk['level'], (int) $risk['score'], $riskReasons);
 
     $entry = [
         'symptoms_note' => trim($_POST['symptoms'] ?? ''),
@@ -194,7 +187,7 @@ render_header('Emergency Visit');
                 <div>
                     <label class="clinic-label">Category</label>
                     <select class="clinic-select" name="category" id="emergencyPatientCategory">
-                        <?php foreach (['Student', 'Staff', 'Faculty', 'Guest'] as $category): ?>
+                        <?php foreach (dropdown_options('person_category') as $category): ?>
                             <option value="<?= e($category) ?>"><?= e($category) ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -216,8 +209,9 @@ render_header('Emergency Visit');
                 <div>
                     <label class="clinic-label">Status</label>
                     <select class="clinic-select" name="status">
-                        <option value="Active">Active</option>
-                        <option value="Completed">Completed</option>
+                        <?php foreach (array_filter(visit_statuses(), fn($status) => $status !== 'Unaddressed') as $status): ?>
+                            <option value="<?= e($status) ?>"><?= e($status) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="md:col-span-2">

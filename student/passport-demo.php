@@ -1490,10 +1490,9 @@ $telHref = preg_replace('/[^0-9+]/', '', $guardian['phone']);
                 <label class="pp-form-label" for="painLevel">Pain Level</label>
                 <select class="pp-textarea" id="painLevel" name="pain_level" required style="min-height:2.75rem;resize:none;">
                   <option value="">Select pain level</option>
-                  <option value="0 - No pain">0 - No pain</option>
-                  <option value="1-3 - Mild pain">1-3 - Mild pain</option>
-                  <option value="4-6 - Moderate pain">4-6 - Moderate pain</option>
-                  <option value="7-10 - Severe pain">7-10 - Severe pain</option>
+                  <?php foreach (incident_pain_level_options() as $option): ?>
+                    <option value="<?= pp_e($option) ?>"><?= pp_e($option) ?></option>
+                  <?php endforeach; ?>
                 </select>
               </div>
 

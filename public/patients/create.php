@@ -3,6 +3,9 @@
 require_once __DIR__ . '/../../app/helpers/view.php';
 require_login();
 
+$programOptions = dropdown_options('student_program');
+$sectionOptions = dropdown_options('student_section');
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $studentNumber = trim($_POST['student_number'] ?? '');
     if (!is_valid_student_id($studentNumber)) {
@@ -10,6 +13,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: create.php');
         exit;
     }
+
+    $program = trim((string) ($_POST['student_program'] ?? ''));
+    $section = strtoupper(trim((string) ($_POST['student_section'] ?? '')));
+    $courseSection = trim(implode(' ', array_filter([$program, $section])));
 
     $token = bin2hex(random_bytes(32));
     $stmt = db()->prepare(
@@ -23,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         trim($_POST['last_name'] ?? ''),
         $_POST['birthdate'] ?: null,
         $_POST['sex'] ?: null,
-        trim($_POST['course_section'] ?? ''),
+        $courseSection,
         trim($_POST['blood_type'] ?? ''),
         trim($_POST['allergies'] ?? ''),
         trim($_POST['existing_conditions'] ?? ''),
@@ -79,8 +86,22 @@ render_header('Add Patient');
             </select>
         </div>
         <div>
-            <label class="clinic-label">Course/Section</label>
-            <input class="clinic-input" name="course_section">
+            <label class="clinic-label">Program</label>
+            <select class="clinic-select" name="student_program">
+                <option value="">Select program</option>
+                <?php foreach ($programOptions as $program): ?>
+                    <option value="<?= e($program) ?>"><?= e($program) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div>
+            <label class="clinic-label">Section</label>
+            <select class="clinic-select" name="student_section">
+                <option value="">Select section</option>
+                <?php foreach ($sectionOptions as $section): ?>
+                    <option value="<?= e($section) ?>"><?= e($section) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
         <div>
             <label class="clinic-label">Blood Type</label>

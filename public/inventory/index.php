@@ -879,9 +879,9 @@ render_clinic_command_header(
                 <div>
                     <label class="clinic-label">Equipment Condition</label>
                     <select class="clinic-select" name="return_condition">
-                        <option value="Good">Good - return to available inventory</option>
-                        <option value="Defective">Defective - keep out of available inventory</option>
-                        <option value="Lost">Lost - keep out of available inventory</option>
+                        <?php foreach (dropdown_options('inventory_return_condition') as $condition): ?>
+                            <option value="<?= e($condition) ?>"><?= e($condition) ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div>
